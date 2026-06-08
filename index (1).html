@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Finance Tracker Pro</title>
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Finance Pro" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface2: #1a1a1a;
+      --surface3: #222222;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text2: #888888;
+      --text3: #555555;
+      --green: #00d68f;
+      --green-dim: #00d68f22;
+      --red: #ff4d6d;
+      --red-dim: #ff4d6d22;
+      --amber: #ffb347;
+      --amber-dim: #ffb34722;
+      --blue: #4d9fff;
+      --blue-dim: #4d9fff22;
+      --accent: #00d68f;
+      --font-display: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-display);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* LAYOUT */
+    #app { display: flex; flex-direction: column; min-height: 100dvh; }
+
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,10,0.9);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .header-left { display: flex; flex-direction: column; gap: 2px; }
+    .header-title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+    .header-title span { color: var(--green); }
+    .header-subtitle { font-size: 11px; color: var(--text3); font-family: var(--font-mono); letter-spacing: 0.5px; text-transform: uppercase; }
+
+    .season-badge {
+      background: var(--green-dim);
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.5px;
+    }
+
+    main { flex: 1; padding: 20px; padding-bottom: 100px; max-width: 480px; margin: 0 auto; width: 100%; }
+
+    /* NAV */
+    nav {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(10,10,10,0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 12px 8px;
+      background: none; border: none; color: var(--text3);
+      font-family: var(--font-display); font-size: 10px; font-weight: 600;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      cursor: pointer; transition: color 0.2s;
+    }
+    .nav-btn.active { color: var(--green); }
+    .nav-btn svg { width: 22px; height: 22px; stroke-width: 1.8; }
+
+    /* VIEWS */
+    .view { display: none; animation: fadeIn 0.2s ease; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* CARDS */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+
+    .card-value {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .card-value.green { color: var(--green); }
+    .card-value.red { color: var(--red); }
+    .card-value.amber { color: var(--amber); }
+
+    .card-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 6px;
+    }
+
+    /* DASHBOARD GRID */
+    .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .dash-grid .card { margin-bottom: 0; }
+    .dash-grid .card .card-value { font-size: 22px; }
+
+    /* STAT ROW */
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { font-size: 14px; color: var(--text2); }
+    .stat-value { font-family: var(--font-mono); font-size: 14px; font-weight: 500; }
+
+    /* SECTION HEADER */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px; margin-top: 8px;
+    }
+    .section-title { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-display); font-size: 14px; font-weight: 700;
+      letter-spacing: 0.2px;
+      cursor: pointer; border: none; transition: all 0.15s;
+      -webkit-user-select: none; user-select: none;
+    }
+    .btn-primary { background: var(--green); color: #000; width: 100%; }
+    .btn-primary:active { transform: scale(0.98); background: #00c07d; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:active { transform: scale(0.98); }
+    .btn-danger { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+    .btn-sm { padding: 8px 14px; font-size: 12px; border-radius: 6px; }
+
+    .btn-add {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--green-dim); color: var(--green);
+      border: 1px solid var(--green);
+      padding: 8px 14px; border-radius: 20px;
+      font-family: var(--font-display); font-size: 12px; font-weight: 700;
+      cursor: pointer; border-style: solid;
+    }
+
+    /* ENTRIES LIST */
+    .entry-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      cursor: pointer; transition: border-color 0.15s;
+    }
+    .entry-item:active { border-color: var(--text3); }
+    .entry-left { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+    .entry-merchant { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .entry-meta { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+    .entry-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .entry-amount { font-family: var(--font-mono); font-size: 15px; font-weight: 500; }
+    .entry-amount.income { color: var(--green); }
+    .entry-amount.expense { color: var(--red); }
+
+    .tag {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+      padding: 2px 7px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px;
+    }
+    .tag-commission { background: var(--green-dim); color: var(--green); }
+    .tag-advance { background: var(--blue-dim); color: var(--blue); }
+    .tag-bonus { background: var(--amber-dim); color: var(--amber); }
+    .tag-backend { background: #a855f722; color: #a855f7; }
+    .tag-business { background: var(--blue-dim); color: var(--blue); }
+
+    /* CATEGORY CHIPS */
+    .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+    .cat-chip {
+      padding: 10px 6px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border); background: var(--surface2);
+      font-family: var(--font-display); font-size: 11px; font-weight: 600;
+      text-align: center; cursor: pointer; transition: all 0.15s;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .cat-chip.selected { border-color: var(--green); background: var(--green-dim); color: var(--green); }
+    .cat-chip span { font-size: 18px; }
+
+    /* MODAL / SHEET */
+    .sheet-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: none; align-items: flex-end;
+    }
+    .sheet-overlay.open { display: flex; animation: overlayIn 0.2s ease; }
+    @keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .sheet {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+      width: 100%; max-height: 92dvh; overflow-y: auto;
+      animation: sheetUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    @keyframes sheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+    .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+    .sheet-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 20px; }
+
+    /* FORM */
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-family: var(--font-mono); font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: block; }
+    .form-input {
+      width: 100%; padding: 14px 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: var(--font-display); font-size: 15px;
+      outline: none; transition: border-color 0.15s;
+      -webkit-appearance: none; appearance: none;
+    }
+    .form-input:focus { border-color: var(--green); }
+    .form-input::placeholder { color: var(--text3); }
+
+    select.form-input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* RECEIPT UPLOAD */
+    .receipt-upload {
+      border: 2px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 24px; text-align: center; cursor: pointer;
+      transition: border-color 0.15s; background: var(--surface2);
+      position: relative;
+    }
+    .receipt-upload:active { border-color: var(--green); }
+    .receipt-upload input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+    .receipt-upload-icon { font-size: 28px; margin-bottom: 8px; }
+    .receipt-upload-text { font-size: 13px; color: var(--text2); }
+    .receipt-upload-sub { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: var(--font-mono); }
+
+    .receipt-preview { width: 100%; border-radius: var(--radius-sm); margin-top: 12px; max-height: 200px; object-fit: cover; }
+
+    /* AI PROCESSING */
+    .ai-processing {
+      background: var(--blue-dim); border: 1px solid var(--blue);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px; margin: 12px 0;
+    }
+    .ai-spinner {
+      width: 18px; height: 18px; border: 2px solid var(--blue);
+      border-top-color: transparent; border-radius: 50%;
+      animation: spin 0.8s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ai-text { font-size: 13px; color: var(--blue); }
+
+    /* PASTE BOX */
+    .paste-area {
+      width: 100%; min-height: 120px; padding: 14px 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: var(--font-mono); font-size: 13px; line-height: 1.6;
+      outline: none; resize: none; transition: border-color 0.15s;
+    }
+    .paste-area:focus { border-color: var(--green); }
+    .paste-area::placeholder { color: var(--text3); }
+
+    /* TOGGLE */
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+    .toggle-label { font-size: 14px; color: var(--text); }
+    .toggle {
+      width: 44px; height: 26px; background: var(--surface3); border-radius: 13px;
+      position: relative; cursor: pointer; transition: background 0.2s; border: none;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--green); }
+    .toggle::after {
+      content: ''; position: absolute; width: 20px; height: 20px;
+      background: white; border-radius: 50%; top: 3px; left: 3px;
+      transition: transform 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+    .toggle.on::after { transform: translateX(18px); }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center; padding: 48px 20px;
+      color: var(--text3); font-family: var(--font-mono); font-size: 13px;
+    }
+    .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+    /* TABS */
+    .tabs { display: flex; gap: 4px; background: var(--surface2); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 20px; }
+    .tab-btn {
+      flex: 1; padding: 8px; border-radius: 6px;
+      background: none; border: none; color: var(--text3);
+      font-family: var(--font-display); font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .tab-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); padding: 12px 20px; border-radius: 20px;
+      font-size: 13px; font-weight: 600; z-index: 300;
+      animation: toastIn 0.3s ease; white-space: nowrap;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .toast.success { border-color: var(--green); color: var(--green); }
+    .toast.error { border-color: var(--red); color: var(--red); }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+    /* NET INDICATOR */
+    .net-bar { height: 4px; background: var(--surface3); border-radius: 2px; margin-top: 12px; overflow: hidden; }
+    .net-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.6s ease; }
+
+    /* DETAIL VIEW */
+    .detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-key { font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
+    .detail-val { font-size: 13px; font-weight: 500; text-align: right; max-width: 60%; word-break: break-word; }
+
+    .delete-btn { color: var(--red); background: var(--red-dim); border: 1px solid var(--red); border-radius: 8px; padding: 12px; width: 100%; margin-top: 16px; font-family: var(--font-display); font-weight: 700; font-size: 14px; cursor: pointer; }
+
+    /* EXPORT */
+    .export-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+    .export-card:active { opacity: 0.7; }
+    .export-info { display: flex; flex-direction: column; gap: 3px; }
+    .export-title { font-size: 14px; font-weight: 600; }
+    .export-sub { font-family: var(--font-mono); font-size: 11px; color: var(--text3); }
+
+    /* LOADING */
+    #loading { display: flex; align-items: center; justify-content: center; min-height: 100dvh; flex-direction: column; gap: 12px; }
+    .load-spinner { width: 32px; height: 32px; border: 2px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .load-text { font-family: var(--font-mono); font-size: 12px; color: var(--text3); }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="load-spinner"></div>
+  <div class="load-text">Loading Finance Tracker Pro...</div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="header-left">
+      <div class="header-title">Finance<span>Pro</span></div>
+      <div class="header-subtitle">Vantage · Season 2026</div>
+    </div>
+    <div class="season-badge">2026 🍁</div>
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view active">
+      <div class="card" style="background: linear-gradient(135deg, #0a1a12, #111); border-color: #1a3a25;">
+        <div class="card-label">Net Income</div>
+        <div class="card-value green" id="dash-net">$0.00</div>
+        <div class="net-bar"><div class="net-fill" id="dash-net-bar" style="width:0%"></div></div>
+        <div class="card-sub" id="dash-net-sub">gross − expenses</div>
+      </div>
+
+      <div class="dash-grid">
+        <div class="card">
+          <div class="card-label">Gross Income</div>
+          <div class="card-value green" id="dash-gross">$0.00</div>
+          <div class="card-sub" id="dash-payments">0 payments</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Expenses</div>
+          <div class="card-value red" id="dash-expenses">$0.00</div>
+          <div class="card-sub" id="dash-expense-count">0 entries</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Season Breakdown</div>
+        <div class="stat-row">
+          <span class="stat-label">Commission</span>
+          <span class="stat-value green" id="dash-commission">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Advances</span>
+          <span class="stat-value" style="color:var(--blue)" id="dash-advance">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Bonuses</span>
+          <span class="stat-value" style="color:var(--amber)" id="dash-bonus">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Backend</span>
+          <span class="stat-value" style="color:#a855f7" id="dash-backend">$0.00</span>
+        </div>
+        <div class="divider"></div>
+        <div class="stat-row">
+          <span class="stat-label">Business Deductibles</span>
+          <span class="stat-value" style="color:var(--blue)" id="dash-deductible">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Last Payment</span>
+          <span class="stat-value" id="dash-last-payment">—</span>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top:20px;">
+        <div class="section-title">Recent Activity</div>
+      </div>
+      <div id="dash-recent"></div>
+    </div>
+
+    <!-- INCOME -->
+    <div id="view-income" class="view">
+      <div class="section-header">
+        <div class="section-title">Income</div>
+        <button class="btn-add" onclick="openIncomeSheet()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+          Add
+        </button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="stat-row" style="padding-top:0">
+          <span class="stat-label">Total Received</span>
+          <span class="stat-value green" id="income-total">$0.00</span>
+        </div>
+        <div class="stat-row" style="padding-bottom:0;border-bottom:none">
+          <span class="stat-label">Pay Runs Logged</span>
+          <span class="stat-value" id="income-count">0</span>
+        </div>
+      </div>
+
+      <div id="income-list"></div>
+    </div>
+
+    <!-- EXPENSES -->
+    <div id="view-expenses" class="view">
+      <div class="section-header">
+        <div class="section-title">Expenses</div>
+        <button class="btn-add" onclick="openExpenseSheet()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+          Add
+        </button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="stat-row" style="padding-top:0">
+          <span class="stat-label">Total Spent</span>
+          <span class="stat-value red" id="expense-total">$0.00</span>
+        </div>
+        <div class="stat-row" style="padding-bottom:0;border-bottom:none">
+          <span class="stat-label">Business Deductibles</span>
+          <span class="stat-value" style="color:var(--blue)" id="expense-deductible">$0.00</span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" onclick="filterExpenses('all', this)">All</button>
+        <button class="tab-btn" onclick="filterExpenses('business', this)">Business</button>
+        <button class="tab-btn" onclick="filterExpenses('personal', this)">Personal</button>
+      </div>
+
+      <div id="expense-list"></div>
+    </div>
+
+    <!-- EXPORT -->
+    <div id="view-export" class="view">
+      <div class="section-header">
+        <div class="section-title">Export & Reports</div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">Season Summary</div>
+        <div class="stat-row" style="padding-top:8px">
+          <span class="stat-label">Gross Income</span>
+          <span class="stat-value green" id="exp-gross">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Total Expenses</span>
+          <span class="stat-value red" id="exp-expenses">$0.00</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Business Deductibles</span>
+          <span class="stat-value" style="color:var(--blue)" id="exp-deductible">$0.00</span>
+        </div>
+        <div class="stat-row" style="padding-bottom:0;border-bottom:none">
+          <span class="stat-label">Net Income</span>
+          <span class="stat-value green" id="exp-net">$0.00</span>
+        </div>
+      </div>
+
+      <div class="section-header" style="margin-top:20px;">
+        <div class="section-title">Download</div>
+      </div>
+
+      <div class="export-card" onclick="exportCSV('income')">
+        <div class="export-info">
+          <div class="export-title">Income Log</div>
+          <div class="export-sub">All Vantage payments · CSV</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      </div>
+
+      <div class="export-card" onclick="exportCSV('expenses')">
+        <div class="export-info">
+          <div class="export-title">Expense Log</div>
+          <div class="export-sub">All expenses with categories · CSV</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      </div>
+
+      <div class="export-card" onclick="exportCSV('full')">
+        <div class="export-info">
+          <div class="export-title">Full Season Report</div>
+          <div class="export-sub">Income + Expenses combined · CSV</div>
+        </div>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      </div>
+    </div>
+  </main>
+
+  <nav>
+    <button class="nav-btn active" onclick="switchView('dashboard', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" onclick="switchView('income', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Income
+    </button>
+    <button class="nav-btn" onclick="switchView('expenses', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 10H3M16 2l5 8-5 8M8 2L3 10l5 8"/></svg>
+      Expenses
+    </button>
+    <button class="nav-btn" onclick="switchView('export', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Export
+    </button>
+  </nav>
+</div>
+
+<!-- INCOME SHEET -->
+<div class="sheet-overlay" id="income-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add Income</div>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchIncomeTab('paste', this)">📋 Paste Deposit</button>
+      <button class="tab-btn" onclick="switchIncomeTab('manual', this)">✏️ Manual</button>
+    </div>
+
+    <!-- PASTE TAB -->
+    <div id="income-paste-tab">
+      <div class="form-group">
+        <label class="form-label">Paste deposit text from your bank</label>
+        <textarea class="paste-area" id="paste-input" placeholder="Amount	625.00 CAD
+Deposit Account	****958
+Credit Date	May 25 2026
+Sender	VANTAGE PEST CONTROL MARKETING INC.
+Commission Tracker pay run 19..."></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="parsePaste()" style="margin-bottom:12px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Parse with AI
+      </button>
+      <div id="paste-ai-status" class="hidden"></div>
+    </div>
+
+    <!-- MANUAL TAB -->
+    <div id="income-manual-tab" class="hidden">
+    </div>
+
+    <!-- SHARED FORM FIELDS -->
+    <div id="income-form-fields" class="hidden">
+      <div class="divider"></div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Amount (CAD)</label>
+          <input type="number" class="form-input" id="inc-amount" placeholder="0.00" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="inc-date" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Pay Run #</label>
+          <input type="text" class="form-input" id="inc-payrun" placeholder="CT-35" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-input" id="inc-type">
+            <option value="commission">Commission</option>
+            <option value="advance">Advance</option>
+            <option value="bonus">Bonus</option>
+            <option value="backend">Backend</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input type="text" class="form-input" id="inc-notes" placeholder="Any notes about this payment..." />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Raw Reference</label>
+        <input type="text" class="form-input" id="inc-ref" placeholder="Full ref number" />
+      </div>
+      <button class="btn btn-primary" onclick="saveIncome()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPENSE SHEET -->
+<div class="sheet-overlay" id="expense-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Add Expense</div>
+
+    <!-- RECEIPT UPLOAD -->
+    <div class="form-group">
+      <label class="form-label">Receipt Photo (optional)</label>
+      <div class="receipt-upload" id="receipt-upload-area">
+        <input type="file" accept="image/*" capture="environment" id="receipt-input" onchange="handleReceiptUpload(event)" />
+        <div class="receipt-upload-icon">📷</div>
+        <div class="receipt-upload-text">Tap to take photo or choose from library</div>
+        <div class="receipt-upload-sub">AI will extract the details automatically</div>
+      </div>
+      <img id="receipt-preview" class="receipt-preview hidden" />
+    </div>
+
+    <div id="expense-ai-status" class="hidden"></div>
+
+    <!-- CATEGORY -->
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <div class="cat-grid">
+        <div class="cat-chip" onclick="selectCat('gas', this)"><span>⛽</span>Gas</div>
+        <div class="cat-chip" onclick="selectCat('food', this)"><span>🍔</span>Food</div>
+        <div class="cat-chip" onclick="selectCat('housing', this)"><span>🏠</span>Housing</div>
+        <div class="cat-chip" onclick="selectCat('gear', this)"><span>🎒</span>Gear</div>
+        <div class="cat-chip" onclick="selectCat('phone', this)"><span>📱</span>Phone</div>
+        <div class="cat-chip" onclick="selectCat('laundry', this)"><span>👕</span>Laundry</div>
+        <div class="cat-chip" onclick="selectCat('entertainment', this)"><span>🎬</span>Fun</div>
+        <div class="cat-chip" onclick="selectCat('transport', this)"><span>🚗</span>Transport</div>
+        <div class="cat-chip" onclick="selectCat('other', this)"><span>📦</span>Other</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Amount (CAD)</label>
+        <input type="number" class="form-input" id="exp-amount" placeholder="0.00" step="0.01" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" class="form-input" id="exp-date" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Merchant / Description</label>
+      <input type="text" class="form-input" id="exp-merchant" placeholder="Where did you spend?" />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Notes (optional)</label>
+      <input type="text" class="form-input" id="exp-notes" placeholder="Any details..." />
+    </div>
+
+    <div class="form-group">
+      <div class="toggle-row">
+        <span class="toggle-label">Business Expense (tax deductible)</span>
+        <button class="toggle" id="business-toggle" onclick="this.classList.toggle('on')"></button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
+  </div>
+</div>
+
+<!-- DETAIL SHEET -->
+<div class="sheet-overlay" id="detail-sheet">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="detail-title">Details</div>
+    <div id="detail-content"></div>
+    <button class="delete-btn" id="detail-delete-btn">Delete Entry</button>
+  </div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+const SUPABASE_URL = 'https://axjzcfdcumhgskjqnzyy.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4anpjZmRjdW1oZ3NranFuenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTgwNTcsImV4cCI6MjA5NjQ5NDA1N30.iME2f-8aLF5Z3-4Xdc0A7OlBo5HZgwvgV8tcQGpsPl8';
+const ANTHROPIC_KEY_PLACEHOLDER = 'YOUR_ANTHROPIC_KEY'; // Set in settings
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==================== STATE ====================
+let incomeData = [];
+let expenseData = [];
+let selectedCategory = '';
+let receiptFile = null;
+let receiptB64 = null;
+let currentExpenseFilter = 'all';
+let detailType = '';
+let detailId = '';
+
+// ==================== INIT ====================
+async function init() {
+  await Promise.all([loadIncome(), loadExpenses()]);
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  updateDashboard();
+}
+
+// ==================== DATA ====================
+async function loadIncome() {
+  const { data, error } = await sb.from('income_entries').select('*').order('credit_date', { ascending: false });
+  if (!error) incomeData = data || [];
+  renderIncome();
+}
+
+async function loadExpenses() {
+  const { data, error } = await sb.from('expense_entries').select('*').order('expense_date', { ascending: false });
+  if (!error) expenseData = data || [];
+  renderExpenses();
+}
+
+// ==================== VIEWS ====================
+function switchView(name, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'export') updateExportView();
+}
+
+// ==================== DASHBOARD ====================
+function updateDashboard() {
+  const gross = incomeData.reduce((s, i) => s + parseFloat(i.amount), 0);
+  const expenses = expenseData.reduce((s, e) => s + parseFloat(e.amount), 0);
+  const net = gross - expenses;
+  const deductible = expenseData.filter(e => e.is_business).reduce((s, e) => s + parseFloat(e.amount), 0);
+
+  const byType = (type) => incomeData.filter(i => i.payment_type === type).reduce((s, i) => s + parseFloat(i.amount), 0);
+
+  document.getElementById('dash-net').textContent = fmt(net);
+  document.getElementById('dash-net').style.color = net >= 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('dash-net-bar').style.width = gross > 0 ? Math.min(100, (net / gross) * 100) + '%' : '0%';
+  document.getElementById('dash-net-sub').textContent = `${fmt(gross)} gross − ${fmt(expenses)} expenses`;
+  document.getElementById('dash-gross').textContent = fmt(gross);
+  document.getElementById('dash-payments').textContent = `${incomeData.length} payment${incomeData.length !== 1 ? 's' : ''}`;
+  document.getElementById('dash-expenses').textContent = fmt(expenses);
+  document.getElementById('dash-expense-count').textContent = `${expenseData.length} entr${expenseData.length !== 1 ? 'ies' : 'y'}`;
+  document.getElementById('dash-commission').textContent = fmt(byType('commission'));
+  document.getElementById('dash-advance').textContent = fmt(byType('advance'));
+  document.getElementById('dash-bonus').textContent = fmt(byType('bonus'));
+  document.getElementById('dash-backend').textContent = fmt(byType('backend'));
+  document.getElementById('dash-deductible').textContent = fmt(deductible);
+
+  const lastPayment = incomeData[0];
+  document.getElementById('dash-last-payment').textContent = lastPayment
+    ? `${fmt(lastPayment.amount)} on ${fmtDate(lastPayment.credit_date)}`
+    : '—';
+
+  // Recent activity
+  const recent = [...incomeData.slice(0, 3).map(i => ({ ...i, _type: 'income' })),
+    ...expenseData.slice(0, 3).map(e => ({ ...e, _type: 'expense' }))]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5);
+
+  const recentEl = document.getElementById('dash-recent');
+  recentEl.innerHTML = recent.length === 0 ? emptyState('No activity yet') : recent.map(item => {
+    if (item._type === 'income') return incomeItem(item);
+    return expenseItem(item);
+  }).join('');
+}
+
+// ==================== INCOME ====================
+function renderIncome() {
+  const total = incomeData.reduce((s, i) => s + parseFloat(i.amount), 0);
+  document.getElementById('income-total').textContent = fmt(total);
+  document.getElementById('income-count').textContent = incomeData.length;
+
+  const list = document.getElementById('income-list');
+  list.innerHTML = incomeData.length === 0 ? emptyState('No payments logged yet') : incomeData.map(incomeItem).join('');
+}
+
+function incomeItem(i) {
+  const tagClass = `tag-${i.payment_type}`;
+  const label = i.payment_type.charAt(0).toUpperCase() + i.payment_type.slice(1);
+  return `<div class="entry-item" onclick="showDetail('income','${i.id}')">
+    <div class="entry-left">
+      <div class="entry-merchant">${i.pay_run_number || 'Payment'}</div>
+      <div class="entry-meta">${fmtDate(i.credit_date)} · ${i.sender ? 'Vantage' : ''}</div>
+    </div>
+    <div class="entry-right">
+      <div class="entry-amount income">+${fmt(i.amount)}</div>
+      <div class="tag ${tagClass}">${label}</div>
+    </div>
+  </div>`;
+}
+
+function openIncomeSheet() {
+  document.getElementById('income-sheet').classList.add('open');
+  document.getElementById('inc-date').value = today();
+  showIncomeFormFields(false);
+}
+
+function switchIncomeTab(tab, btn) {
+  document.querySelectorAll('#income-sheet .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('income-paste-tab').classList.toggle('hidden', tab !== 'paste');
+  document.getElementById('income-manual-tab').classList.toggle('hidden', tab !== 'manual');
+  if (tab === 'manual') showIncomeFormFields(true);
+  else showIncomeFormFields(false);
+}
+
+function showIncomeFormFields(show) {
+  document.getElementById('income-form-fields').classList.toggle('hidden', !show);
+}
+
+async function parsePaste() {
+  const text = document.getElementById('paste-input').value.trim();
+  if (!text) return showToast('Paste some deposit text first', 'error');
+
+  const status = document.getElementById('paste-ai-status');
+  status.className = 'ai-processing';
+  status.innerHTML = `<div class="ai-spinner"></div><div class="ai-text">Reading deposit with AI...</div>`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: `Extract deposit information from bank notification text. Return ONLY valid JSON with these exact fields:
+{
+  "amount": number,
+  "credit_date": "YYYY-MM-DD",
+  "pay_run_number": "CT-XX or null",
+  "ref_number": "full ref string or null",
+  "payment_type": "commission|advance|bonus|backend",
+  "sender": "sender name"
+}
+For payment_type: if text says "Commission Tracker" use "commission", "advance" use "advance", "bonus" use "bonus", "backend" use "backend". Default to "commission".
+Return only the JSON object, no other text.`,
+        messages: [{ role: 'user', content: text }]
+      })
+    });
+
+    const data = await res.json();
+    const raw = data.content[0].text.trim();
+    const parsed = JSON.parse(raw);
+
+    document.getElementById('inc-amount').value = parsed.amount || '';
+    document.getElementById('inc-date').value = parsed.credit_date || today();
+    document.getElementById('inc-payrun').value = parsed.pay_run_number || '';
+    document.getElementById('inc-ref').value = parsed.ref_number || '';
+    document.getElementById('inc-type').value = parsed.payment_type || 'commission';
+
+    status.className = 'hidden';
+    showIncomeFormFields(true);
+    showToast('✓ Deposit parsed successfully', 'success');
+  } catch (err) {
+    status.className = 'hidden';
+    showToast('Parse failed — try manual entry', 'error');
+    showIncomeFormFields(true);
+  }
+}
+
+async function saveIncome() {
+  const amount = parseFloat(document.getElementById('inc-amount').value);
+  const date = document.getElementById('inc-date').value;
+  if (!amount || !date) return showToast('Amount and date required', 'error');
+
+  const payload = {
+    amount,
+    credit_date: date,
+    pay_run_number: document.getElementById('inc-payrun').value || null,
+    ref_number: document.getElementById('inc-ref').value || null,
+    payment_type: document.getElementById('inc-type').value,
+    notes: document.getElementById('inc-notes').value || null,
+    raw_paste: document.getElementById('paste-input').value || null,
+    sender: 'VANTAGE PEST CONTROL MARKETING INC.'
+  };
+
+  const { error } = await sb.from('income_entries').insert([payload]);
+  if (error) return showToast('Save failed', 'error');
+
+  closeSheets();
+  await loadIncome();
+  updateDashboard();
+  showToast(`+${fmt(amount)} logged`, 'success');
+  resetIncomeForm();
+}
+
+function resetIncomeForm() {
+  document.getElementById('paste-input').value = '';
+  document.getElementById('inc-amount').value = '';
+  document.getElementById('inc-payrun').value = '';
+  document.getElementById('inc-ref').value = '';
+  document.getElementById('inc-notes').value = '';
+  document.getElementById('paste-ai-status').className = 'hidden';
+  showIncomeFormFields(false);
+}
+
+// ==================== EXPENSES ====================
+function renderExpenses() {
+  const total = expenseData.reduce((s, e) => s + parseFloat(e.amount), 0);
+  const deductible = expenseData.filter(e => e.is_business).reduce((s, e) => s + parseFloat(e.amount), 0);
+  document.getElementById('expense-total').textContent = fmt(total);
+  document.getElementById('expense-deductible').textContent = fmt(deductible);
+
+  let filtered = expenseData;
+  if (currentExpenseFilter === 'business') filtered = expenseData.filter(e => e.is_business);
+  if (currentExpenseFilter === 'personal') filtered = expenseData.filter(e => !e.is_business);
+
+  const list = document.getElementById('expense-list');
+  list.innerHTML = filtered.length === 0 ? emptyState('No expenses yet') : filtered.map(expenseItem).join('');
+}
+
+function expenseItem(e) {
+  const catEmoji = { gas:'⛽',food:'🍔',housing:'🏠',gear:'🎒',phone:'📱',laundry:'👕',entertainment:'🎬',transport:'🚗',other:'📦' };
+  const emoji = catEmoji[e.category] || '📦';
+  return `<div class="entry-item" onclick="showDetail('expense','${e.id}')">
+    <div class="entry-left">
+      <div class="entry-merchant">${emoji} ${e.merchant || e.category}</div>
+      <div class="entry-meta">${fmtDate(e.expense_date)} · ${e.category}${e.is_business ? ' · biz' : ''}</div>
+    </div>
+    <div class="entry-right">
+      <div class="entry-amount expense">−${fmt(e.amount)}</div>
+      ${e.is_business ? '<div class="tag tag-business">Deductible</div>' : ''}
+    </div>
+  </div>`;
+}
+
+function filterExpenses(filter, btn) {
+  currentExpenseFilter = filter;
+  document.querySelectorAll('#view-expenses .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderExpenses();
+}
+
+function openExpenseSheet() {
+  document.getElementById('expense-sheet').classList.add('open');
+  document.getElementById('exp-date').value = today();
+  selectedCategory = '';
+  receiptFile = null;
+  receiptB64 = null;
+  document.getElementById('receipt-preview').classList.add('hidden');
+  document.getElementById('expense-ai-status').classList.add('hidden');
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+  document.getElementById('exp-amount').value = '';
+  document.getElementById('exp-merchant').value = '';
+  document.getElementById('exp-notes').value = '';
+  document.getElementById('business-toggle').classList.remove('on');
+}
+
+function selectCat(cat, el) {
+  selectedCategory = cat;
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function handleReceiptUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  receiptFile = file;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const dataUrl = e.target.result;
+    receiptB64 = dataUrl.split(',')[1];
+
+    document.getElementById('receipt-preview').src = dataUrl;
+    document.getElementById('receipt-preview').classList.remove('hidden');
+
+    // AI extract
+    const status = document.getElementById('expense-ai-status');
+    status.className = 'ai-processing';
+    status.innerHTML = `<div class="ai-spinner"></div><div class="ai-text">Reading receipt with AI...</div>`;
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: `You are a receipt reader. Extract information from the receipt image and return ONLY valid JSON:
+{
+  "merchant": "store/restaurant name",
+  "amount": total_amount_as_number,
+  "date": "YYYY-MM-DD or null if unclear",
+  "category": "gas|food|housing|gear|phone|laundry|entertainment|transport|other"
+}
+Return only the JSON, no other text.`,
+          messages: [{
+            role: 'user',
+            content: [{
+              type: 'image',
+              source: { type: 'base64', media_type: file.type || 'image/jpeg', data: receiptB64 }
+            }, { type: 'text', text: 'Extract the receipt details.' }]
+          }]
+        })
+      });
+
+      const data = await res.json();
+      const parsed = JSON.parse(data.content[0].text.trim());
+
+      if (parsed.merchant) document.getElementById('exp-merchant').value = parsed.merchant;
+      if (parsed.amount) document.getElementById('exp-amount').value = parsed.amount;
+      if (parsed.date) document.getElementById('exp-date').value = parsed.date;
+      if (parsed.category) {
+        const chip = document.querySelector(`.cat-chip[onclick*="'${parsed.category}'"]`);
+        if (chip) selectCat(parsed.category, chip);
+      }
+
+      status.className = 'hidden';
+      showToast('✓ Receipt read successfully', 'success');
+    } catch (err) {
+      status.className = 'hidden';
+      showToast('Could not read receipt — fill in manually', 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveExpense() {
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const date = document.getElementById('exp-date').value;
+  const merchant = document.getElementById('exp-merchant').value;
+  if (!amount || !date) return showToast('Amount and date required', 'error');
+  if (!selectedCategory) return showToast('Select a category', 'error');
+
+  let receipt_url = null;
+
+  // Upload receipt photo if present
+  if (receiptFile && receiptB64) {
+    const fileName = `receipt_${Date.now()}.${receiptFile.name.split('.').pop()}`;
+    const { data: uploadData, error: uploadError } = await sb.storage
+      .from('receipts')
+      .upload(fileName, receiptFile, { contentType: receiptFile.type });
+
+    if (!uploadError) {
+      const { data: urlData } = sb.storage.from('receipts').getPublicUrl(fileName);
+      receipt_url = urlData.publicUrl;
+    }
+  }
+
+  const payload = {
+    amount,
+    expense_date: date,
+    merchant: merchant || null,
+    category: selectedCategory,
+    is_business: document.getElementById('business-toggle').classList.contains('on'),
+    notes: document.getElementById('exp-notes').value || null,
+    receipt_url
+  };
+
+  const { error } = await sb.from('expense_entries').insert([payload]);
+  if (error) return showToast('Save failed', 'error');
+
+  closeSheets();
+  await loadExpenses();
+  updateDashboard();
+  showToast(`−${fmt(amount)} logged`, 'success');
+}
+
+// ==================== DETAIL ====================
+function showDetail(type, id) {
+  detailType = type;
+  detailId = id;
+  const item = type === 'income'
+    ? incomeData.find(i => i.id === id)
+    : expenseData.find(e => e.id === id);
+  if (!item) return;
+
+  document.getElementById('detail-title').textContent = type === 'income' ? 'Payment Details' : 'Expense Details';
+
+  let rows = '';
+  if (type === 'income') {
+    rows = `
+      <div class="detail-row"><span class="detail-key">Amount</span><span class="detail-val" style="color:var(--green);font-weight:700">${fmt(item.amount)}</span></div>
+      <div class="detail-row"><span class="detail-key">Date</span><span class="detail-val">${fmtDate(item.credit_date)}</span></div>
+      <div class="detail-row"><span class="detail-key">Pay Run</span><span class="detail-val">${item.pay_run_number || '—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Type</span><span class="detail-val">${item.payment_type}</span></div>
+      <div class="detail-row"><span class="detail-key">Ref #</span><span class="detail-val">${item.ref_number || '—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Sender</span><span class="detail-val">${item.sender || 'Vantage'}</span></div>
+      ${item.notes ? `<div class="detail-row"><span class="detail-key">Notes</span><span class="detail-val">${item.notes}</span></div>` : ''}
+    `;
+  } else {
+    const catEmoji = { gas:'⛽',food:'🍔',housing:'🏠',gear:'🎒',phone:'📱',laundry:'👕',entertainment:'🎬',transport:'🚗',other:'📦' };
+    rows = `
+      <div class="detail-row"><span class="detail-key">Amount</span><span class="detail-val" style="color:var(--red);font-weight:700">${fmt(item.amount)}</span></div>
+      <div class="detail-row"><span class="detail-key">Date</span><span class="detail-val">${fmtDate(item.expense_date)}</span></div>
+      <div class="detail-row"><span class="detail-key">Merchant</span><span class="detail-val">${item.merchant || '—'}</span></div>
+      <div class="detail-row"><span class="detail-key">Category</span><span class="detail-val">${catEmoji[item.category] || ''} ${item.category}</span></div>
+      <div class="detail-row"><span class="detail-key">Business</span><span class="detail-val">${item.is_business ? '✓ Yes (deductible)' : 'No'}</span></div>
+      ${item.notes ? `<div class="detail-row"><span class="detail-key">Notes</span><span class="detail-val">${item.notes}</span></div>` : ''}
+      ${item.receipt_url ? `<div style="margin-top:12px"><img src="${item.receipt_url}" style="width:100%;border-radius:8px" /></div>` : ''}
+    `;
+  }
+
+  document.getElementById('detail-content').innerHTML = rows;
+  document.getElementById('detail-delete-btn').onclick = () => deleteEntry(type, id);
+  document.getElementById('detail-sheet').classList.add('open');
+}
+
+async function deleteEntry(type, id) {
+  const table = type === 'income' ? 'income_entries' : 'expense_entries';
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) return showToast('Delete failed', 'error');
+  closeSheets();
+  if (type === 'income') { await loadIncome(); } else { await loadExpenses(); }
+  updateDashboard();
+  showToast('Entry deleted');
+}
+
+// ==================== EXPORT ====================
+function updateExportView() {
+  const gross = incomeData.reduce((s, i) => s + parseFloat(i.amount), 0);
+  const expenses = expenseData.reduce((s, e) => s + parseFloat(e.amount), 0);
+  const deductible = expenseData.filter(e => e.is_business).reduce((s, e) => s + parseFloat(e.amount), 0);
+  document.getElementById('exp-gross').textContent = fmt(gross);
+  document.getElementById('exp-expenses').textContent = fmt(expenses);
+  document.getElementById('exp-deductible').textContent = fmt(deductible);
+  document.getElementById('exp-net').textContent = fmt(gross - expenses);
+}
+
+function exportCSV(type) {
+  let csv = '';
+  let filename = '';
+
+  if (type === 'income') {
+    csv = 'Pay Run,Date,Amount (CAD),Type,Ref #,Notes\n';
+    incomeData.forEach(i => {
+      csv += `${i.pay_run_number || ''},${i.credit_date},${i.amount},${i.payment_type},${i.ref_number || ''},${i.notes || ''}\n`;
+    });
+    filename = 'vantage-income-2026.csv';
+  } else if (type === 'expenses') {
+    csv = 'Date,Merchant,Amount (CAD),Category,Business,Notes\n';
+    expenseData.forEach(e => {
+      csv += `${e.expense_date},${e.merchant || ''},${e.amount},${e.category},${e.is_business ? 'Yes' : 'No'},${e.notes || ''}\n`;
+    });
+    filename = 'expenses-2026.csv';
+  } else {
+    const gross = incomeData.reduce((s, i) => s + parseFloat(i.amount), 0);
+    const expenses = expenseData.reduce((s, e) => s + parseFloat(e.amount), 0);
+    csv = 'Finance Tracker Pro — 2026 Season Report\n\n';
+    csv += `Gross Income,${fmt(gross)}\nTotal Expenses,${fmt(expenses)}\nNet Income,${fmt(gross - expenses)}\n\n`;
+    csv += 'INCOME\nPay Run,Date,Amount,Type\n';
+    incomeData.forEach(i => { csv += `${i.pay_run_number || ''},${i.credit_date},${i.amount},${i.payment_type}\n`; });
+    csv += '\nEXPENSES\nDate,Merchant,Amount,Category,Business\n';
+    expenseData.forEach(e => { csv += `${e.expense_date},${e.merchant || ''},${e.amount},${e.category},${e.is_business ? 'Yes' : 'No'}\n`; });
+    filename = 'finance-report-2026.csv';
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+  showToast('Downloaded', 'success');
+}
+
+// ==================== UTILS ====================
+function fmt(n) { return '$' + parseFloat(n || 0).toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(d) { return new Date(d + 'T12:00:00').toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function emptyState(msg) { return `<div class="empty"><div class="empty-icon">📭</div>${msg}</div>`; }
+
+function closeSheets() {
+  document.querySelectorAll('.sheet-overlay').forEach(s => s.classList.remove('open'));
+}
+
+// Close sheet on overlay tap
+document.querySelectorAll('.sheet-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSheets(); });
+});
+
+function showToast(msg, type = '') {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2800);
+}
+
+// ==================== SERVICE WORKER ====================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+init();
+</script>
+</body>
+</html>
