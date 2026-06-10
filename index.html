@@ -1414,18 +1414,18 @@ function openExpenseSheet() {
 }
 
 const TAX_TREATMENT = {
-  groceries:    { label: '✓ 100% Deductible', note: 'Away-from-home meal/living expense (travelling contractor)', deductible: true, rate: 1.0 },
-  eating_out:   { label: '✓ 50% Deductible', note: 'CRA allows 50% of meal costs for business travel', deductible: true, rate: 0.5 },
-  housing:      { label: '✓ 100% Deductible', note: 'Temporary accommodation away from home base', deductible: true, rate: 1.0 },
-  gas:          { label: '✓ 100% Deductible', note: 'Vehicle fuel for work travel', deductible: true, rate: 1.0 },
-  phone:        { label: '✓ Partially Deductible', note: 'Business-use portion of phone bill (estimate %)', deductible: true, rate: 0.8 },
-  supplies:     { label: '✓ 100% Deductible', note: 'Work supplies and equipment', deductible: true, rate: 1.0 },
-  laundry:      { label: '✓ 100% Deductible', note: 'Work clothing maintenance away from home', deductible: true, rate: 1.0 },
-  transport:    { label: '✓ 100% Deductible', note: 'Business transportation costs', deductible: true, rate: 1.0 },
-  parking:      { label: '✓ 100% Deductible', note: 'Parking for work purposes', deductible: true, rate: 1.0 },
-  entertainment:{ label: '✗ Personal', note: 'Not deductible unless client entertainment (ask accountant)', deductible: false, rate: 0 },
-  personal:     { label: '✗ Personal', note: 'Not a business expense', deductible: false, rate: 0 },
-  other:        { label: '? Ask Your Accountant', note: 'Keep the receipt — let your accountant decide', deductible: false, rate: 0 },
+  groceries:    { label: '✓ 50% Deductible', note: 'CRA Line 8523 — meals while travelling for business. 50% rule applies to all food expenses for self-employed contractors.', deductible: true, rate: 0.5 },
+  eating_out:   { label: '✓ 50% Deductible', note: 'CRA Line 8523 — 50% limit applies to meals & beverages for self-employed persons travelling for business (T2125).', deductible: true, rate: 0.5 },
+  housing:      { label: '✓ 100% Deductible', note: 'CRA Line 9200 — temporary accommodation while travelling away from home for business. Fully deductible travel expense.', deductible: true, rate: 1.0 },
+  gas:          { label: '✓ 100% Deductible', note: 'CRA Line 9281 — motor vehicle fuel expense for business travel including reimbursements to other drivers.', deductible: true, rate: 1.0 },
+  phone:        { label: '✓ ~80% Deductible', note: 'CRA — business-use portion of cell phone. Estimated 80% during work season. Keep monthly bills.', deductible: true, rate: 0.8 },
+  supplies:     { label: '✓ 100% Deductible', note: 'CRA Line 8811 — supplies used to earn business income (sunscreen, bags, work gear, etc.).', deductible: true, rate: 1.0 },
+  laundry:      { label: '✓ 100% Deductible', note: 'CRA Line 9200 — laundry costs incurred while travelling away from home for business.', deductible: true, rate: 1.0 },
+  transport:    { label: '✓ 100% Deductible', note: 'CRA Line 9200 — business transportation (transit, rideshare, taxi). E-transfers to drivers for gas = deductible.', deductible: true, rate: 1.0 },
+  parking:      { label: '✓ 100% Deductible', note: 'CRA Line 9200 — parking fees incurred for business travel purposes.', deductible: true, rate: 1.0 },
+  entertainment:{ label: '✗ Not Deductible', note: 'Personal entertainment is not a business expense.', deductible: false, rate: 0 },
+  personal:     { label: '✗ Not Deductible', note: 'Personal expense — not claimable on T2125.', deductible: false, rate: 0 },
+  other:        { label: '? Ask Your Accountant', note: 'Keep the receipt — let your accountant determine deductibility on T2125.', deductible: false, rate: 0 },
 };
 
 function selectCat(cat, el) {
@@ -1634,7 +1634,7 @@ function exportCSV(type) {
     filename = 'finance-report-2026.csv';
   }
   if (type === 'accountant') {
-    const TAX_RATES = { groceries:1.0, eating_out:0.5, housing:1.0, gas:1.0, phone:0.8, supplies:1.0, laundry:1.0, transport:1.0, parking:1.0 };
+    const TAX_RATES = { groceries:0.5, eating_out:0.5, housing:1.0, gas:1.0, phone:0.8, supplies:1.0, laundry:1.0, transport:1.0, parking:1.0 };
     csv = 'Date,Merchant,Category,Tax Treatment,Amount (CAD),Deductible Amount,Notes,Receipt URL\n';
     expenseData.filter(e => e.is_business).sort((a,b) => a.expense_date.localeCompare(b.expense_date)).forEach(e => {
       const rate = TAX_RATES[e.category] || 1.0;
@@ -1652,15 +1652,15 @@ function exportCSV(type) {
 
 function exportAccountantReport() {
   const TAX_TREATMENT_LOCAL = {
-    groceries:    { label: 'Groceries & Meals (Away from Home Base)', rate: 1.0, rateLabel: '100%', cra: 'CRA: Reasonable living expenses incurred away from home base for work travel. Contractor lives in Edmonton AB, works in Toronto ON.' },
-    eating_out:   { label: 'Meals — Restaurant/Fast Food', rate: 0.5, rateLabel: '50%', cra: 'CRA s.67.1: 50% deductible meal expense for business travel.' },
-    housing:      { label: 'Temporary Accommodation (Toronto)', rate: 1.0, rateLabel: '100%', cra: 'CRA: Temporary lodging away from principal residence for work. Home base: Edmonton AB.' },
-    gas:          { label: 'Vehicle Fuel / Gas Reimbursements', rate: 1.0, rateLabel: '100%', cra: 'CRA: Motor vehicle expenses for business travel including reimbursements to other drivers.' },
-    phone:        { label: 'Cell Phone — Business Use Portion', rate: 0.8, rateLabel: '~80%', cra: 'CRA: Business-use portion of personal cell phone. Estimated 80% business use during work season.' },
-    supplies:     { label: 'Work Supplies & Field Equipment', rate: 1.0, rateLabel: '100%', cra: 'CRA: Supplies and materials used to earn business income.' },
-    laundry:      { label: 'Laundry & Clothing Maintenance', rate: 1.0, rateLabel: '100%', cra: 'CRA: Work clothing maintenance expense away from home.' },
-    transport:    { label: 'Transportation (Transit/Rideshare/Taxi)', rate: 1.0, rateLabel: '100%', cra: 'CRA: Business transportation expense.' },
-    parking:      { label: 'Parking', rate: 1.0, rateLabel: '100%', cra: 'CRA: Parking fees incurred for business purposes.' },
+    groceries:    { label: 'Groceries — Meals While Travelling', rate: 0.5, rateLabel: '50%', cra: 'CRA Line 8523 (T2125): 50% limit applies to all food & beverage expenses for self-employed contractors travelling for business.' },
+    eating_out:   { label: 'Meals — Restaurant/Fast Food', rate: 0.5, rateLabel: '50%', cra: 'CRA Line 8523 (T2125): 50% deductible meal expense for self-employed persons travelling for business.' },
+    housing:      { label: 'Temporary Accommodation (Toronto)', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Travel expense — temporary lodging away from principal residence (Edmonton AB) for business.' },
+    gas:          { label: 'Vehicle Fuel / Gas Reimbursements', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9281 (T2125): Motor vehicle fuel and travel reimbursements for business purposes.' },
+    phone:        { label: 'Cell Phone — Business Use Portion (~80%)', rate: 0.8, rateLabel: '~80%', cra: 'CRA: Business-use portion of personal cell phone. Estimated 80% during May-Aug work season. Keep monthly bills.' },
+    supplies:     { label: 'Work Supplies & Field Equipment', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 8811 (T2125): Supplies used to earn business income (sunscreen, work bags, gear, etc.).' },
+    laundry:      { label: 'Laundry & Clothing Maintenance', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Laundry costs incurred while travelling away from home base for business.' },
+    transport:    { label: 'Transportation (Transit/Rideshare/E-transfers)', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Business transportation costs including e-transfers to other drivers for gas/rides.' },
+    parking:      { label: 'Parking', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Parking fees for business travel.' },
   };
 
   const bizExpenses = expenseData.filter(e => e.is_business);
@@ -2120,7 +2120,7 @@ Analyze the expense and return ONLY valid JSON:
   "cra_note": "optional extra note for accountant if complex",
   "confidence": "high|medium|low"
 }
-Deductible rates: groceries=1.0, eating_out=0.5 (CRA 50% rule), housing=1.0, gas=1.0, phone=0.8, supplies=1.0, laundry=1.0, transport=1.0, parking=1.0, entertainment=0.0, personal=0.0.
+CRA 2026 deductible rates (T2125): groceries=0.5 (CRA Line 8523 — 50% rule applies to ALL food for self-employed), eating_out=0.5 (same 50% rule), housing=1.0 (Line 9200 travel), gas=1.0 (Line 9281), phone=0.8 (business portion), supplies=1.0 (Line 8811), laundry=1.0 (Line 9200), transport=1.0 (Line 9200), parking=1.0 (Line 9200), entertainment=0.0, personal=0.0.
 E-transfers to friends for gas/rides = transport, 100% deductible.
 Groceries at any store (Walmart, No Frills, etc) = groceries category.
 Be generous but accurate — this person legitimately incurs these costs for work.
