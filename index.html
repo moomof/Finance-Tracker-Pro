@@ -375,7 +375,7 @@
 
     .sheet-handle { width: 32px; height: 3px; background: var(--border2); border-radius: 2px; margin: 0 auto 18px; }
     .sheet-title { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 20px; }
-    .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; position: sticky; top: 0; background: var(--sidebar); padding: 4px 0 12px; margin-top: -4px; z-index: 10; }
     .sheet-header .sheet-title { margin-bottom: 0; }
     .sheet-close {
       width: 28px; height: 28px; border-radius: 50%;
@@ -1479,7 +1479,14 @@ async function handleReceiptUpload(event) {
 
     receiptB64 = compressedDataUrl.split(',')[1];
     document.getElementById('receipt-preview').src = dataUrl;
-    document.getElementById('receipt-preview').classList.remove('hidden');    const status = document.getElementById('expense-ai-status');
+    document.getElementById('receipt-preview').classList.remove('hidden');
+
+    if (!getAnthropicKey()) {
+      showToast('Add your API key in Settings first', 'error');
+      return;
+    }
+
+    const status = document.getElementById('expense-ai-status');
     status.className = 'ai-processing';
     status.innerHTML = `<div class="ai-spinner"></div><div class="ai-text">Reading receipt with AI...</div>`;
     try {
@@ -1503,7 +1510,7 @@ async function handleReceiptUpload(event) {
       raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
       // Extract JSON object if surrounded by text
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON in response');
+      if (!jsonMatch) throw new Error('No JSON in response: ' + raw.slice(0,100));
       const parsed = JSON.parse(jsonMatch[0]);
       if (parsed.merchant) document.getElementById('exp-merchant').value = parsed.merchant;
       if (parsed.amount) document.getElementById('exp-amount').value = parsed.amount;
@@ -1515,9 +1522,9 @@ async function handleReceiptUpload(event) {
       status.className = 'hidden';
       showToast('✓ Receipt read', 'success');
     } catch(err) {
-      status.className = 'hidden';
-      console.error('Receipt parse error:', err);
-      showToast('Could not read receipt — fill manually', 'error');
+      status.className = '';
+      status.innerHTML = `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:7px;padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--red)">✕ ${err.message}</div>`;
+      console.error('Receipt error:', err);
     }
   };
   reader.readAsDataURL(file);
