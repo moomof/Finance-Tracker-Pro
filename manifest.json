@@ -2,11 +2,11 @@
   "name": "Finance Tracker Pro",
   "short_name": "Finance Pro",
   "description": "Vantage income and expense tracker",
-  "start_url": "/Finance-Tracker-Pro/index.html",
-  "scope": "/Finance-Tracker-Pro/",
+  "start_url": "https://moomof.github.io/Finance-Tracker-Pro/",
+  "scope": "https://moomof.github.io/Finance-Tracker-Pro/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
   "orientation": "portrait-primary",
   "icons": [
     {
