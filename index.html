@@ -375,6 +375,17 @@
 
     .sheet-handle { width: 32px; height: 3px; background: var(--border2); border-radius: 2px; margin: 0 auto 18px; }
     .sheet-title { font-size: 17px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 20px; }
+    .sheet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .sheet-header .sheet-title { margin-bottom: 0; }
+    .sheet-close {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--surface3); border: none;
+      color: var(--text2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .sheet-close:hover { background: var(--border2); }
 
     /* ── FORM ── */
     .form-group { margin-bottom: 14px; }
@@ -1010,7 +1021,10 @@
 <div class="sheet-overlay" id="income-sheet">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">Add Income</div>
+    <div class="sheet-header">
+      <div class="sheet-title">Add Income</div>
+      <button class="sheet-close" onclick="closeSheets()">✕</button>
+    </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchIncomeTab('paste',this)">📋 Paste Deposit</button>
       <button class="tab-btn" onclick="switchIncomeTab('manual',this)">✏️ Manual Entry</button>
@@ -1070,7 +1084,10 @@
 <div class="sheet-overlay" id="expense-sheet">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title">Add Expense</div>
+    <div class="sheet-header">
+      <div class="sheet-title">Add Expense</div>
+      <button class="sheet-close" onclick="closeSheets()">✕</button>
+    </div>
     <div class="form-group">
       <label class="form-label">Receipt Photo (optional)</label>
       <div class="receipt-upload">
@@ -1140,7 +1157,10 @@
 <div class="sheet-overlay" id="detail-sheet">
   <div class="sheet">
     <div class="sheet-handle"></div>
-    <div class="sheet-title" id="detail-title">Details</div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="detail-title">Details</div>
+      <button class="sheet-close" onclick="closeSheets()">✕</button>
+    </div>
     <div id="detail-content"></div>
     <button class="delete-btn" id="detail-delete-btn">Delete Entry</button>
   </div>
@@ -1329,7 +1349,12 @@ For payment_type: "Commission Tracker" = advance, "backend" = backend, "remainin
       })
     });
     const data = await res.json();
-    const parsed = JSON.parse(data.content[0].text.trim());
+    if (!res.ok || !data.content?.[0]?.text) throw new Error(data.error?.message || 'API error');
+    let rawDeposit = data.content[0].text.trim();
+    rawDeposit = rawDeposit.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/\s*```$/i,'').trim();
+    const depositMatch = rawDeposit.match(/\{[\s\S]*\}/);
+    if (!depositMatch) throw new Error('No JSON in response');
+    const parsed = JSON.parse(depositMatch[0]);
     document.getElementById('inc-amount').value = parsed.amount || '';
     document.getElementById('inc-date').value = parsed.credit_date || today();
     document.getElementById('inc-payrun').value = parsed.pay_run_number || '';
@@ -1454,7 +1479,14 @@ async function handleReceiptUpload(event) {
         })
       });
       const data = await res.json();
-      const parsed = JSON.parse(data.content[0].text.trim());
+      if (!res.ok || !data.content?.[0]?.text) throw new Error(data.error?.message || 'API error');
+      // Strip markdown fences if present
+      let raw = data.content[0].text.trim();
+      raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+      // Extract JSON object if surrounded by text
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in response');
+      const parsed = JSON.parse(jsonMatch[0]);
       if (parsed.merchant) document.getElementById('exp-merchant').value = parsed.merchant;
       if (parsed.amount) document.getElementById('exp-amount').value = parsed.amount;
       if (parsed.date) document.getElementById('exp-date').value = parsed.date;
@@ -1466,6 +1498,7 @@ async function handleReceiptUpload(event) {
       showToast('✓ Receipt read', 'success');
     } catch(err) {
       status.className = 'hidden';
+      console.error('Receipt parse error:', err);
       showToast('Could not read receipt — fill manually', 'error');
     }
   };
