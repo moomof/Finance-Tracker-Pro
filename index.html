@@ -583,6 +583,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         Reconcile
       </button>
+      <button class="nav-item" onclick="switchView('settings',this)" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Settings
+      </button>
     </div>
     <div class="sidebar-sync">
       <div class="sync-dot">Synced · Supabase</div>
@@ -772,6 +776,27 @@
           <div><div class="export-title">Full Season Report</div><div class="export-sub">Income + expenses combined · CSV</div></div>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         </div>
+
+        <div class="section-header" style="margin-top:24px"><div class="section-title">🧾 Accountant Package</div></div>
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px">
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            Generates a clean HTML report your accountant can open in any browser — includes all business expenses, tax treatment, category breakdown, and receipt photos embedded inline.
+          </div>
+        </div>
+        <div class="export-card" onclick="exportAccountantReport()">
+          <div>
+            <div class="export-title">Accountant Report</div>
+            <div class="export-sub">Business expenses + receipts + tax breakdown · HTML</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </div>
+        <div class="export-card" onclick="exportCSV('accountant')">
+          <div>
+            <div class="export-title">Deductibles CSV</div>
+            <div class="export-sub">Business expenses only with tax treatment · CSV</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        </div>
       </div>
     </div>
 
@@ -871,6 +896,60 @@
       </div>
     </div>
 
+    <!-- SETTINGS VIEW -->
+    <div id="view-settings" class="view">
+      <div class="page-header">
+        <div class="page-title">Settings</div>
+        <div class="page-subtitle">App Configuration</div>
+      </div>
+      <div class="page-content">
+
+        <!-- AI KEY -->
+        <div class="section-header"><div class="section-title">AI Features</div></div>
+        <div class="card" style="margin-bottom:20px">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+            Required for receipt reading and deposit parsing. Your key is stored only on this device — never sent to GitHub or any server other than Anthropic.
+          </div>
+          <div class="form-group">
+            <label class="form-label">Anthropic API Key</label>
+            <input type="password" class="form-input" id="settings-api-key" placeholder="sk-ant-..." />
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn btn-primary" style="flex:1" onclick="saveApiKey()">Save Key</button>
+            <button class="btn btn-outline" onclick="testApiKey()">Test</button>
+          </div>
+          <div id="api-key-status" style="margin-top:10px;font-family:var(--mono);font-size:12px;color:var(--text3)"></div>
+          <div style="margin-top:12px;font-size:12px;color:var(--text3);line-height:1.5">
+            Get a key at <strong>console.anthropic.com</strong> → API Keys → Create Key. $5 credit covers the whole season.
+          </div>
+        </div>
+
+        <!-- APP INFO -->
+        <div class="section-header"><div class="section-title">About</div></div>
+        <div class="card">
+          <div style="display:flex;flex-direction:column;gap:0">
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:13px;color:var(--text2)">App</span>
+              <span style="font-size:13px;font-weight:500">Finance Tracker Pro</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:13px;color:var(--text2)">Season</span>
+              <span style="font-size:13px;font-weight:500">2026 · Vantage</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+              <span style="font-size:13px;color:var(--text2)">Finance DB</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--text3)">axjzcfdcumhgskjqnzyy</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;padding:10px 0">
+              <span style="font-size:13px;color:var(--text2)">Field Tracker DB</span>
+              <span style="font-family:var(--mono);font-size:11px;color:var(--text3)">fgqzgrdfkzomhayubnju</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div><!-- /main -->
 
   <!-- MOBILE NAV -->
@@ -894,6 +973,10 @@
     <button class="mob-nav-btn" onclick="switchView('reconcile',this)" data-view="reconcile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
       Reconcile
+    </button>
+    <button class="mob-nav-btn" onclick="switchView('settings',this)" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
     </button>
   </nav>
 
@@ -977,16 +1060,23 @@
     <div id="expense-ai-status" class="hidden"></div>
     <div class="form-group">
       <label class="form-label">Category</label>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">✓ Business Deductible</div>
+      <div class="cat-grid" style="margin-bottom:10px">
+        <div class="cat-chip" onclick="selectCat('groceries',this)"><span>🛒</span>Groceries<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('eating_out',this)"><span>🍔</span>Eating Out<div style="font-size:8px;opacity:0.6;margin-top:1px">50% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('housing',this)"><span>🏠</span>Housing<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('gas',this)"><span>⛽</span>Gas<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('phone',this)"><span>📱</span>Phone<div style="font-size:8px;opacity:0.6;margin-top:1px">partial ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('supplies',this)"><span>🎒</span>Supplies<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('laundry',this)"><span>👕</span>Laundry<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('transport',this)"><span>🚗</span>Transport<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('parking',this)"><span>🅿️</span>Parking<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Personal / Non-deductible</div>
       <div class="cat-grid">
-        <div class="cat-chip" onclick="selectCat('gas',this)"><span>⛽</span>Gas</div>
-        <div class="cat-chip" onclick="selectCat('food',this)"><span>🍔</span>Food</div>
-        <div class="cat-chip" onclick="selectCat('housing',this)"><span>🏠</span>Housing</div>
-        <div class="cat-chip" onclick="selectCat('gear',this)"><span>🎒</span>Gear</div>
-        <div class="cat-chip" onclick="selectCat('phone',this)"><span>📱</span>Phone</div>
-        <div class="cat-chip" onclick="selectCat('laundry',this)"><span>👕</span>Laundry</div>
-        <div class="cat-chip" onclick="selectCat('entertainment',this)"><span>🎬</span>Fun</div>
-        <div class="cat-chip" onclick="selectCat('transport',this)"><span>🚗</span>Transport</div>
-        <div class="cat-chip" onclick="selectCat('other',this)"><span>📦</span>Other</div>
+        <div class="cat-chip" onclick="selectCat('entertainment',this)"><span>🎬</span>Fun<div style="font-size:8px;opacity:0.6;margin-top:1px">personal</div></div>
+        <div class="cat-chip" onclick="selectCat('personal',this)"><span>🛍️</span>Personal<div style="font-size:8px;opacity:0.6;margin-top:1px">personal</div></div>
+        <div class="cat-chip" onclick="selectCat('other',this)"><span>📦</span>Other<div style="font-size:8px;opacity:0.6;margin-top:1px">ask accountant</div></div>
       </div>
     </div>
     <div class="form-row">
@@ -1007,12 +1097,12 @@
       <label class="form-label">Notes (optional)</label>
       <input type="text" class="form-input" id="exp-notes" placeholder="Any details..." />
     </div>
-    <div class="form-group">
-      <div class="toggle-row">
-        <span class="toggle-label">Business Expense (tax deductible)</span>
-        <button class="toggle" id="business-toggle" onclick="this.classList.toggle('on')"></button>
-      </div>
+    <div id="tax-treatment-display" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:14px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Tax Treatment</div>
+      <div style="font-size:13px;font-weight:500" id="tax-treatment-label">—</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px" id="tax-treatment-note">—</div>
     </div>
+    <input type="hidden" id="business-toggle-hidden" value="false">
     <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
   </div>
 </div>
@@ -1030,13 +1120,17 @@
 <script>
 const SUPABASE_URL = 'https://axjzcfdcumhgskjqnzyy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4anpjZmRjdW1oZ3NranFuenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTgwNTcsImV4cCI6MjA5NjQ5NDA1N30.iME2f-8aLF5Z3-4Xdc0A7OlBo5HZgwvgV8tcQGpsPl8';
-const ANTHROPIC_KEY = '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';
-const AI_HEADERS = {
-  'Content-Type': 'application/json',
-  'x-api-key': ANTHROPIC_KEY,
-  'anthropic-version': '2023-06-01',
-  'anthropic-dangerous-direct-browser-access': 'true'
-};
+function getAnthropicKey() {
+  return localStorage.getItem('ftp_anthropic_key') || '';
+}
+function getAIHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'x-api-key': getAnthropicKey(),
+    'anthropic-version': '2023-06-01',
+    'anthropic-dangerous-direct-browser-access': 'true'
+  };
+}
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -1078,6 +1172,7 @@ function switchView(name, btn) {
   document.querySelectorAll(`[data-view="${name}"]`).forEach(b => b.classList.add('active'));
   if (name === 'export') updateExportView();
   if (name === 'reconcile') loadReconcile();
+  if (name === 'settings') loadSettingsView();
 }
 
 function updateDashboard() {
@@ -1107,7 +1202,7 @@ function updateDashboard() {
   if (recent.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>No activity yet</div>`; return; }
   el.innerHTML = `<table class="entry-table"><tbody>` + recent.map(item => {
     if (item._t === 'income') return `<tr onclick="showDetail('income','${item.id}')"><td>${item.pay_run_number||'Payment'}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(item.credit_date)}</td><td><span class="tag tag-${item.payment_type}">${item.payment_type}</span></td><td class="amount-cell" style="text-align:right;color:var(--green)">+${fmt(item.amount)}</td></tr>`;
-    const catEmoji = {gas:'⛽',food:'🍔',housing:'🏠',gear:'🎒',phone:'📱',laundry:'👕',entertainment:'🎬',transport:'🚗',other:'📦'};
+    const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
     return `<tr onclick="showDetail('expense','${item.id}')"><td>${catEmoji[item.category]||'📦'} ${item.merchant||item.category}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(item.expense_date)}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${item.category}</td><td class="amount-cell" style="text-align:right;color:var(--red)">−${fmt(item.amount)}</td></tr>`;
   }).join('') + `</tbody></table>`;
 }
@@ -1142,7 +1237,7 @@ function renderExpenses() {
   if (currentExpenseFilter === 'business') filtered = expenseData.filter(e => e.is_business);
   if (currentExpenseFilter === 'personal') filtered = expenseData.filter(e => !e.is_business);
 
-  const catEmoji = {gas:'⛽',food:'🍔',housing:'🏠',gear:'🎒',phone:'📱',laundry:'👕',entertainment:'🎬',transport:'🚗',other:'📦'};
+  const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
   const tbody = document.getElementById('expense-list');
   if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>No expenses yet</div></td></tr>`; return; }
   tbody.innerHTML = filtered.map(e => `
@@ -1183,13 +1278,18 @@ function showIncomeFormFields(show) {
 async function parsePaste() {
   const text = document.getElementById('paste-input').value.trim();
   if (!text) return showToast('Paste some deposit text first', 'error');
+  if (!getAnthropicKey()) {
+    showToast('Add your API key in Settings first', 'error');
+    switchView('settings', document.querySelector('[data-view="settings"]'));
+    return;
+  }
   const status = document.getElementById('paste-ai-status');
   status.className = 'ai-processing';
   status.innerHTML = `<div class="ai-spinner"></div><div class="ai-text">Reading deposit with AI...</div>`;
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: AI_HEADERS,
+      headers: getAIHeaders(),
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
@@ -1253,13 +1353,48 @@ function openExpenseSheet() {
   document.getElementById('expense-ai-status').classList.add('hidden');
   document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
   ['exp-amount','exp-merchant','exp-notes'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('business-toggle').classList.remove('on');
+  const hiddenToggle = document.getElementById('business-toggle-hidden');
+  if (hiddenToggle) hiddenToggle.value = 'false';
+  const taxDisplay = document.getElementById('tax-treatment-display');
+  if (taxDisplay) taxDisplay.style.display = 'none';
 }
+
+const TAX_TREATMENT = {
+  groceries:    { label: '✓ 100% Deductible', note: 'Away-from-home meal/living expense (travelling contractor)', deductible: true, rate: 1.0 },
+  eating_out:   { label: '✓ 50% Deductible', note: 'CRA allows 50% of meal costs for business travel', deductible: true, rate: 0.5 },
+  housing:      { label: '✓ 100% Deductible', note: 'Temporary accommodation away from home base', deductible: true, rate: 1.0 },
+  gas:          { label: '✓ 100% Deductible', note: 'Vehicle fuel for work travel', deductible: true, rate: 1.0 },
+  phone:        { label: '✓ Partially Deductible', note: 'Business-use portion of phone bill (estimate %)', deductible: true, rate: 0.8 },
+  supplies:     { label: '✓ 100% Deductible', note: 'Work supplies and equipment', deductible: true, rate: 1.0 },
+  laundry:      { label: '✓ 100% Deductible', note: 'Work clothing maintenance away from home', deductible: true, rate: 1.0 },
+  transport:    { label: '✓ 100% Deductible', note: 'Business transportation costs', deductible: true, rate: 1.0 },
+  parking:      { label: '✓ 100% Deductible', note: 'Parking for work purposes', deductible: true, rate: 1.0 },
+  entertainment:{ label: '✗ Personal', note: 'Not deductible unless client entertainment (ask accountant)', deductible: false, rate: 0 },
+  personal:     { label: '✗ Personal', note: 'Not a business expense', deductible: false, rate: 0 },
+  other:        { label: '? Ask Your Accountant', note: 'Keep the receipt — let your accountant decide', deductible: false, rate: 0 },
+};
 
 function selectCat(cat, el) {
   selectedCategory = cat;
   document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');
+
+  // Show tax treatment
+  const tx = TAX_TREATMENT[cat];
+  if (tx) {
+    const display = document.getElementById('tax-treatment-display');
+    const labelEl = document.getElementById('tax-treatment-label');
+    const noteEl = document.getElementById('tax-treatment-note');
+    if (display && labelEl && noteEl) {
+      display.style.display = 'block';
+      labelEl.textContent = tx.label;
+      labelEl.style.color = tx.deductible ? 'var(--green)' : tx.rate === 0 && cat === 'other' ? 'var(--amber)' : 'var(--red)';
+      noteEl.textContent = tx.note;
+    }
+    // Auto-set business flag based on deductibility
+    const hiddenToggle = document.getElementById('business-toggle-hidden');
+    if (hiddenToggle) hiddenToggle.value = tx.deductible ? 'true' : 'false';
+  }
 }
 
 async function handleReceiptUpload(event) {
@@ -1278,11 +1413,11 @@ async function handleReceiptUpload(event) {
     try {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: AI_HEADERS,
+        headers: getAIHeaders(),
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
-          system: `Extract receipt info. Return ONLY valid JSON: {"merchant":"store name","amount":total_number,"date":"YYYY-MM-DD or null","category":"gas|food|housing|gear|phone|laundry|entertainment|transport|other"}`,
+          system: `Extract receipt info. Return ONLY valid JSON: {"merchant":"store name","amount":total_number,"date":"YYYY-MM-DD or null","category":"groceries|eating_out|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other"}. Use groceries for supermarkets/grocery stores, eating_out for restaurants/fast food, supplies for work gear/equipment.`,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: file.type||'image/jpeg', data: receiptB64 }},
             { type: 'text', text: 'Extract receipt details.' }
@@ -1322,11 +1457,12 @@ async function saveExpense() {
       receipt_url = urlData.publicUrl;
     }
   }
+  const tx = TAX_TREATMENT[selectedCategory] || { deductible: false, rate: 0 };
   const payload = {
     amount, expense_date: date,
     merchant: document.getElementById('exp-merchant').value || null,
     category: selectedCategory,
-    is_business: document.getElementById('business-toggle').classList.contains('on'),
+    is_business: tx.deductible,
     notes: document.getElementById('exp-notes').value || null,
     receipt_url
   };
@@ -1355,7 +1491,7 @@ function showDetail(type, id) {
       ...(item.notes ? [['Notes', item.notes]] : [])
     ].map(([k,v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
   } else {
-    const catEmoji = {gas:'⛽',food:'🍔',housing:'🏠',gear:'🎒',phone:'📱',laundry:'👕',entertainment:'🎬',transport:'🚗',other:'📦'};
+    const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
     rows = [
       ['Amount', `<span style="color:var(--red);font-weight:700">−${fmt(item.amount)}</span>`],
       ['Date', fmtDate(item.expense_date)],
@@ -1409,11 +1545,158 @@ function exportCSV(type) {
     csv += '\nEXPENSES\nDate,Merchant,Amount,Category,Business\n';
     expenseData.forEach(e => { csv += `${e.expense_date},${e.merchant||''},${e.amount},${e.category},${e.is_business?'Yes':'No'}\n`; });
     filename = 'finance-report-2026.csv';
+  } else if (type === 'accountant') {
+    const TAX_RATES = { groceries:1.0, eating_out:0.5, housing:1.0, gas:1.0, phone:0.8, supplies:1.0, laundry:1.0, transport:1.0, parking:1.0 };
+    csv = 'Date,Merchant,Category,Tax Treatment,Amount (CAD),Deductible Amount,Notes,Receipt URL\n';
+    expenseData.filter(e => e.is_business).sort((a,b) => a.expense_date.localeCompare(b.expense_date)).forEach(e => {
+      const rate = TAX_RATES[e.category] || 1.0;
+      const deductible = parseFloat(e.amount) * rate;
+      csv += `${e.expense_date},"${e.merchant||''}","${e.category}","${Math.round(rate*100)}% deductible",${e.amount},${deductible.toFixed(2)},"${e.notes||''}","${e.receipt_url||''}"
+`;
+    });
+    filename = 'vantage-2026-deductibles.csv';
   }
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: filename });
   a.click(); URL.revokeObjectURL(a.href);
   showToast('Downloaded', 'success');
+}
+
+function exportAccountantReport() {
+  const TAX_TREATMENT_LOCAL = {
+    groceries:    { label: 'Groceries (Meals — Away from Home)', rate: 1.0, rateLabel: '100%' },
+    eating_out:   { label: 'Meals — Eating Out', rate: 0.5, rateLabel: '50%' },
+    housing:      { label: 'Temporary Housing', rate: 1.0, rateLabel: '100%' },
+    gas:          { label: 'Vehicle Fuel', rate: 1.0, rateLabel: '100%' },
+    phone:        { label: 'Cell Phone (Business Use)', rate: 0.8, rateLabel: '~80%' },
+    supplies:     { label: 'Work Supplies & Equipment', rate: 1.0, rateLabel: '100%' },
+    laundry:      { label: 'Laundry', rate: 1.0, rateLabel: '100%' },
+    transport:    { label: 'Transportation', rate: 1.0, rateLabel: '100%' },
+    parking:      { label: 'Parking', rate: 1.0, rateLabel: '100%' },
+  };
+
+  const bizExpenses = expenseData.filter(e => e.is_business);
+  const totalSpent = bizExpenses.reduce((s,e) => s + parseFloat(e.amount), 0);
+
+  // Category totals
+  const byCategory = {};
+  bizExpenses.forEach(e => {
+    if (!byCategory[e.category]) byCategory[e.category] = { total: 0, count: 0, deductible: 0 };
+    const tx = TAX_TREATMENT_LOCAL[e.category] || { rate: 1.0, rateLabel: '100%' };
+    byCategory[e.category].total += parseFloat(e.amount);
+    byCategory[e.category].deductible += parseFloat(e.amount) * tx.rate;
+    byCategory[e.category].count++;
+  });
+
+  const totalDeductible = Object.values(byCategory).reduce((s,c) => s + c.deductible, 0);
+  const grossIncome = incomeData.reduce((s,i) => s + parseFloat(i.amount), 0);
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Tax Expense Report — Vantage 2026</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 32px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+  .summary-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; }
+  .summary-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-bottom: 6px; }
+  .summary-value { font-size: 24px; font-weight: 700; }
+  .summary-value.green { color: #16a34a; }
+  .summary-value.red { color: #dc2626; }
+  h2 { font-size: 16px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; margin: 28px 0 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; }
+  th { text-align: left; padding: 8px 10px; background: #f5f5f5; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #666; border-bottom: 2px solid #e0e0e0; }
+  td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .amount { font-family: 'SF Mono', 'Courier New', monospace; font-weight: 600; text-align: right; }
+  .receipt-img { max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 4px; border: 1px solid #e0e0e0; margin-top: 4px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag-green { background: #dcfce7; color: #16a34a; }
+  .tag-amber { background: #fef9c3; color: #854d0e; }
+  .note { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 12px 16px; font-size: 13px; color: #0369a1; margin-bottom: 24px; }
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #888; }
+</style>
+</head>
+<body>
+<h1>Business Expense Report</h1>
+<div class="subtitle">Vantage Pest Control · 2026 Summer Season · Independent Contractor</div>
+
+<div class="note">
+  <strong>Note to Accountant:</strong> This contractor was based in Edmonton, AB and worked in Toronto, ON for the full 2026 summer season (May–August) as an independent contractor for Vantage Pest Control. All meal, housing, and transportation expenses were incurred away from their home base. Meal deductions are claimed at the applicable CRA rate for business travel. Phone deduction reflects estimated business-use percentage.
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="summary-label">Gross Income Received</div>
+    <div class="summary-value green">$${grossIncome.toLocaleString('en-CA', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Total Business Expenses</div>
+    <div class="summary-value red">$${totalSpent.toLocaleString('en-CA', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Est. Total Deductible</div>
+    <div class="summary-value green">$${totalDeductible.toLocaleString('en-CA', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+  </div>
+</div>
+
+<h2>Expense Summary by Category</h2>
+<table>
+  <thead><tr><th>Category</th><th>Description</th><th>Entries</th><th>Total Spent</th><th>Rate</th><th style="text-align:right">Deductible Amount</th></tr></thead>
+  <tbody>
+    ${Object.entries(byCategory).map(([cat, data]) => {
+      const tx = TAX_TREATMENT_LOCAL[cat] || { label: cat, rate: 1.0, rateLabel: '100%' };
+      return `<tr>
+        <td><strong>${cat}</strong></td>
+        <td style="color:#666">${tx.label}</td>
+        <td>${data.count}</td>
+        <td class="amount">$${data.total.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td><span class="tag tag-${tx.rate >= 1 ? 'green' : 'amber'}">${tx.rateLabel}</span></td>
+        <td class="amount" style="color:#16a34a">$${data.deductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      </tr>`;
+    }).join('')}
+    <tr style="background:#f5f5f5;font-weight:700">
+      <td colspan="3"><strong>TOTAL</strong></td>
+      <td class="amount">$${totalSpent.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td></td>
+      <td class="amount" style="color:#16a34a">$${totalDeductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Itemized Business Expenses</h2>
+<table>
+  <thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Notes</th><th style="text-align:right">Amount</th><th>Receipt</th></tr></thead>
+  <tbody>
+    ${bizExpenses.sort((a,b) => a.expense_date.localeCompare(b.expense_date)).map(e => `
+    <tr>
+      <td style="white-space:nowrap">${e.expense_date}</td>
+      <td><strong>${e.merchant || '—'}</strong></td>
+      <td>${e.category}</td>
+      <td style="color:#666;font-size:12px">${e.notes || '—'}</td>
+      <td class="amount">$${parseFloat(e.amount).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td>${e.receipt_url ? `<img src="${e.receipt_url}" class="receipt-img" />` : '<span style="color:#aaa;font-size:12px">No receipt</span>'}</td>
+    </tr>`).join('')}
+  </tbody>
+</table>
+
+<div class="footer">
+  Generated by Finance Tracker Pro · ${new Date().toLocaleDateString('en-CA', {year:'numeric',month:'long',day:'numeric'})} · All amounts in CAD
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(blob),
+    download: `vantage-2026-tax-report-${new Date().toISOString().slice(0,10)}.html`
+  });
+  a.click();
+  URL.revokeObjectURL(a.href);
+  showToast('Accountant report downloaded', 'success');
 }
 
 function fmt(n) { return '$' + parseFloat(n||0).toLocaleString('en-CA', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
@@ -1432,6 +1715,78 @@ function showToast(msg, type='') {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 2800);
 }
+
+// ==================== SETTINGS ====================
+
+function loadSettingsView() {
+  const keyEl = document.getElementById('settings-api-key');
+  const statusEl = document.getElementById('api-key-status');
+  if (!keyEl) return;
+  const stored = localStorage.getItem('ftp_anthropic_key');
+  if (stored) {
+    keyEl.value = stored;
+    statusEl.textContent = '✓ Key saved on this device';
+    statusEl.style.color = 'var(--green)';
+  } else {
+    statusEl.textContent = 'No key saved yet';
+    statusEl.style.color = 'var(--text3)';
+  }
+}
+
+function saveApiKey() {
+  const key = document.getElementById('settings-api-key').value.trim();
+  const statusEl = document.getElementById('api-key-status');
+  if (!key.startsWith('sk-ant-')) {
+    statusEl.textContent = '✗ Invalid key format — should start with sk-ant-';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  localStorage.setItem('ftp_anthropic_key', key);
+  statusEl.textContent = '✓ Key saved on this device only';
+  statusEl.style.color = 'var(--green)';
+  showToast('API key saved', 'success');
+}
+
+async function testApiKey() {
+  const key = localStorage.getItem('ftp_anthropic_key');
+  const statusEl = document.getElementById('api-key-status');
+  if (!key) {
+    statusEl.textContent = 'No key saved — enter and save a key first';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+  statusEl.textContent = 'Testing...';
+  statusEl.style.color = 'var(--blue)';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'hi' }]
+      })
+    });
+    if (res.ok) {
+      statusEl.textContent = '✓ Key is working!';
+      statusEl.style.color = 'var(--green)';
+    } else {
+      const err = await res.json();
+      statusEl.textContent = '✗ ' + (err.error?.message || 'Key invalid or revoked');
+      statusEl.style.color = 'var(--red)';
+    }
+  } catch(e) {
+    statusEl.textContent = '✗ Connection failed';
+    statusEl.style.color = 'var(--red)';
+  }
+}
+
+// ==================== END SETTINGS ====================
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 
