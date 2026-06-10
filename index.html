@@ -579,6 +579,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Export
       </button>
+      <button class="nav-item" onclick="switchView('reconcile',this)" data-view="reconcile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Reconcile
+      </button>
     </div>
     <div class="sidebar-sync">
       <div class="sync-dot">Synced · Supabase</div>
@@ -771,6 +775,102 @@
       </div>
     </div>
 
+    <!-- RECONCILE VIEW -->
+    <div id="view-reconcile" class="view">
+      <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between">
+        <div>
+          <div class="page-title">Reconcile</div>
+          <div class="page-subtitle">What Vantage Owes You</div>
+        </div>
+        <button class="btn-add" onclick="loadReconcile()" style="margin-top:4px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
+      </div>
+      <div class="page-content">
+
+        <!-- STATUS -->
+        <div id="reconcile-status" class="hidden"></div>
+
+        <!-- WHAT YOU'VE EARNED (from Field Tracker) -->
+        <div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,#1a2035,#1e2840);border-color:var(--border2)">
+          <div class="card-label" style="color:var(--text3)">Estimated Earned (from Field Tracker)</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+            <div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Active Accounts</div>
+              <div style="font-size:28px;font-weight:700;color:var(--green);letter-spacing:-1px" id="rec-active-accounts">—</div>
+            </div>
+            <div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Active Revenue</div>
+              <div style="font-size:28px;font-weight:700;color:var(--green);letter-spacing:-1px" id="rec-active-revenue">—</div>
+            </div>
+            <div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Commission Rate</div>
+              <div style="font-size:28px;font-weight:700;color:var(--blue);letter-spacing:-1px" id="rec-commission-rate">—</div>
+            </div>
+            <div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Est. Gross Commission</div>
+              <div style="font-size:28px;font-weight:700;color:var(--green);letter-spacing:-1px" id="rec-gross-commission">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- WHAT YOU'VE RECEIVED (from Finance Tracker) -->
+        <div class="stat-grid stat-grid-2" style="margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-label">Advances Received</div>
+            <div class="stat-value blue" id="rec-advances-received">$0.00</div>
+            <div class="stat-sub" id="rec-advance-count">0 payments</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Backend Received</div>
+            <div class="stat-value purple" id="rec-backend-received">$0.00</div>
+            <div class="stat-sub" id="rec-backend-count">0 payments</div>
+          </div>
+        </div>
+
+        <!-- THE GAP -->
+        <div class="card" id="rec-gap-card" style="margin-bottom:16px;border-color:var(--border2)">
+          <div class="card-label">Settlement Breakdown</div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:var(--text2)">Est. Gross Commission</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--green)" id="rec-row-gross">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:var(--text2)">− Advances Paid Out</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--red)" id="rec-row-advances">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:var(--text2)">− Housing Deductions</span>
+            <span style="font-family:var(--mono);font-size:13px;font-weight:500;color:var(--red)" id="rec-row-housing">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border2)">
+            <span style="font-size:13px;color:var(--text2)">= Est. Net Commission</span>
+            <span style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--text)" id="rec-row-net">—</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0">
+            <span style="font-size:15px;font-weight:700">Still Owed (Backend)</span>
+            <span style="font-family:var(--mono);font-size:22px;font-weight:800;letter-spacing:-0.5px" id="rec-still-owed">—</span>
+          </div>
+        </div>
+
+        <!-- PAYOUT SCHEDULE -->
+        <div class="section-header"><div class="section-title">Expected Payout Schedule</div></div>
+        <div id="rec-payout-schedule"></div>
+
+        <div style="margin-top:16px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm)">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Data Sources</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6">
+            Earnings pulled live from <strong>Field Tracker Pro</strong> (Field Tracker Supabase · pulse_snapshots)<br>
+            Payments pulled from <strong>Finance Tracker Pro</strong> (this app · income_entries)
+          </div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:6px" id="rec-last-sync">Last synced: never</div>
+        </div>
+
+      </div>
+    </div>
+
   </div><!-- /main -->
 
   <!-- MOBILE NAV -->
@@ -790,6 +890,10 @@
     <button class="mob-nav-btn" onclick="switchView('export',this)" data-view="export">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       Export
+    </button>
+    <button class="mob-nav-btn" onclick="switchView('reconcile',this)" data-view="reconcile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Reconcile
     </button>
   </nav>
 
@@ -973,6 +1077,7 @@ function switchView(name, btn) {
   // activate both sidebar and mobile nav
   document.querySelectorAll(`[data-view="${name}"]`).forEach(b => b.classList.add('active'));
   if (name === 'export') updateExportView();
+  if (name === 'reconcile') loadReconcile();
 }
 
 function updateDashboard() {
@@ -1329,6 +1434,151 @@ function showToast(msg, type='') {
 }
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// ==================== RECONCILE ====================
+// Field Tracker Pro Supabase (same project — different tables)
+// FTP uses same Supabase project for pulse_snapshots and settings
+const FT_SUPABASE_URL = 'https://axjzcfdcumhgskjqnzyy.supabase.co';
+const FT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4anpjZmRjdW1oZ3NranFuenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTgwNTcsImV4cCI6MjA5NjQ5NDA1N30.iME2f-8aLF5Z3-4Xdc0A7OlBo5HZgwvgV8tcQGpsPl8';
+
+// Commission tiers matching Field Tracker Pro exactly
+const COMM_TIERS = [
+  { min:1,   max:149, pct:0.30 },
+  { min:150, max:174, pct:0.33 },
+  { min:175, max:199, pct:0.35 },
+  { min:200, max:249, pct:0.38 },
+  { min:250, max:299, pct:0.40 },
+  { min:300, max:349, pct:0.45 },
+  { min:350, max:399, pct:0.48 },
+  { min:400, max:Infinity, pct:0.50 },
+];
+
+function getTier(accounts) {
+  for (let i = COMM_TIERS.length - 1; i >= 0; i--) {
+    if (accounts >= COMM_TIERS[i].min) return COMM_TIERS[i];
+  }
+  return COMM_TIERS[0];
+}
+
+// Housing deduction schedule per contract
+function calcHousingDeductions() {
+  const schedule = [
+    '2026-05-25','2026-06-10','2026-06-25','2026-07-10',
+    '2026-07-25','2026-08-10','2026-08-25','2026-09-10'
+  ];
+  const today = new Date().toISOString().split('T')[0];
+  return schedule.filter(d => d <= today).length;
+}
+
+async function loadReconcile() {
+  const statusEl = document.getElementById('reconcile-status');
+  statusEl.className = 'ai-processing';
+  statusEl.innerHTML = `<div class="ai-spinner"></div><div class="ai-text">Fetching Field Tracker data...</div>`;
+
+  try {
+    // Fetch latest pulse snapshot from Field Tracker's Supabase
+    const res = await fetch(
+      `${FT_SUPABASE_URL}/rest/v1/pulse_snapshots?order=date.desc&limit=1`,
+      {
+        headers: {
+          'apikey': FT_SUPABASE_KEY,
+          'Authorization': `Bearer ${FT_SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!res.ok) throw new Error('Could not fetch Field Tracker data');
+    const pulses = await res.json();
+    const pulse = pulses[0];
+
+    if (!pulse) {
+      statusEl.className = 'ai-processing';
+      statusEl.innerHTML = `<div style="color:var(--amber)">⚠ No pulse data found in Field Tracker. Log a pulse snapshot first.</div>`;
+      return;
+    }
+
+    statusEl.className = 'hidden';
+
+    // Parse Field Tracker pulse data
+    const sold = parseInt(pulse.sold || 0);
+    const inactive = parseInt(pulse.inactive || 0);
+    const serviced = parseInt(pulse.serviced || 0);
+    const pending = parseInt(pulse.pending || 0);
+    const servicedRev = parseFloat(pulse.serviced_revenue || 0);
+    const pendingRev = parseFloat(pulse.pending_revenue || 0);
+
+    const authNet = Math.max(0, sold - inactive);
+    const activeRev = servicedRev + pendingRev;
+    const tier = getTier(authNet);
+    const grossCommission = activeRev * tier.pct;
+
+    // Finance Tracker income data
+    const advances = incomeData.filter(i => i.payment_type === 'advance').reduce((s, i) => s + parseFloat(i.amount), 0);
+    const advanceCount = incomeData.filter(i => i.payment_type === 'advance').length;
+    const backendReceived = incomeData.filter(i => i.payment_type === 'backend' || i.payment_type === 'remaining_backend').reduce((s, i) => s + parseFloat(i.amount), 0);
+    const backendCount = incomeData.filter(i => i.payment_type === 'backend' || i.payment_type === 'remaining_backend').length;
+
+    // Housing deductions
+    const housingCount = calcHousingDeductions();
+    const housingTotal = housingCount * 250;
+
+    // Net commission estimate
+    const netCommission = grossCommission - advances - housingTotal;
+    const totalReceived = advances + backendReceived;
+    const stillOwed = Math.max(0, netCommission - backendReceived);
+
+    // Update UI — earned section
+    document.getElementById('rec-active-accounts').textContent = authNet;
+    document.getElementById('rec-active-revenue').textContent = fmt(activeRev);
+    document.getElementById('rec-commission-rate').textContent = (tier.pct * 100) + '%';
+    document.getElementById('rec-gross-commission').textContent = fmt(grossCommission);
+
+    // Received section
+    document.getElementById('rec-advances-received').textContent = fmt(advances);
+    document.getElementById('rec-advance-count').textContent = `${advanceCount} payment${advanceCount !== 1 ? 's' : ''}`;
+    document.getElementById('rec-backend-received').textContent = fmt(backendReceived);
+    document.getElementById('rec-backend-count').textContent = `${backendCount} payment${backendCount !== 1 ? 's' : ''}`;
+
+    // Gap breakdown
+    document.getElementById('rec-row-gross').textContent = fmt(grossCommission);
+    document.getElementById('rec-row-advances').textContent = `−${fmt(advances)}`;
+    document.getElementById('rec-row-housing').textContent = `−${fmt(housingTotal)} (${housingCount} periods)`;
+    document.getElementById('rec-row-net').textContent = fmt(netCommission);
+
+    const owedEl = document.getElementById('rec-still-owed');
+    owedEl.textContent = fmt(stillOwed);
+    owedEl.style.color = stillOwed > 0 ? 'var(--amber)' : 'var(--green)';
+
+    // Payout schedule
+    const oct25 = Math.round(netCommission * 0.75);
+    const mar25 = Math.round(netCommission * 0.25);
+    const today = new Date().toISOString().split('T')[0];
+    const payouts = [
+      { date: 'Oct 25, 2026', pct: '75%', est: oct25, status: today > '2026-10-25' ? 'past' : 'future', desc: 'Accounts serviced before Oct 1' },
+      { date: 'Mar 25, 2027', pct: '25%', est: mar25, status: 'future', desc: 'Remaining holdback' },
+      { date: 'May 25, 2027', pct: '100%', est: 0, status: 'future', desc: 'Accounts serviced after Sep 30' },
+    ];
+
+    document.getElementById('rec-payout-schedule').innerHTML = payouts.map(p => `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:2px">${p.date} <span style="font-family:var(--mono);font-size:11px;color:var(--text3)">${p.pct}</span></div>
+          <div style="font-size:11px;color:var(--text3)">${p.desc}</div>
+        </div>
+        <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:${p.status === 'past' ? 'var(--text3)' : 'var(--green)'}">${p.est > 0 ? '~' + fmt(p.est) : '—'}</div>
+      </div>`).join('');
+
+    // Last sync time
+    document.getElementById('rec-last-sync').textContent = `Last synced: ${new Date().toLocaleTimeString('en-CA')} · Pulse date: ${fmtDate(pulse.date)}`;
+
+  } catch(err) {
+    statusEl.className = 'ai-processing';
+    statusEl.innerHTML = `<div style="color:var(--red)">✕ ${err.message}</div>`;
+  }
+}
+
+// ==================== END RECONCILE ====================
 
 init();
 </script>
