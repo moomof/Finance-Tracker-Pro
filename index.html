@@ -1291,7 +1291,7 @@ async function parsePaste() {
       method: 'POST',
       headers: getAIHeaders(),
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 1000,
         system: `Extract deposit information from bank notification text. Return ONLY valid JSON:
 {"amount":number,"credit_date":"YYYY-MM-DD","pay_run_number":"CT-XX or null","ref_number":"full ref or null","payment_type":"advance|backend|remaining_backend","sender":"sender name"}
@@ -1415,7 +1415,7 @@ async function handleReceiptUpload(event) {
         method: 'POST',
         headers: getAIHeaders(),
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 1000,
           system: `Extract receipt info. Return ONLY valid JSON: {"merchant":"store name","amount":total_number,"date":"YYYY-MM-DD or null","category":"groceries|eating_out|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other"}. Use groceries for supermarkets/grocery stores, eating_out for restaurants/fast food, supplies for work gear/equipment.`,
           messages: [{ role: 'user', content: [
@@ -1768,7 +1768,7 @@ async function testApiKey() {
         'anthropic-dangerous-direct-browser-access': 'true'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 10,
         messages: [{ role: 'user', content: 'hi' }]
       })
