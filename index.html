@@ -139,6 +139,13 @@
       border-bottom: 1px solid var(--border);
       padding-bottom: 20px;
     }
+    @supports (padding-top: env(safe-area-inset-top)) {
+      @media (max-width: 700px) {
+        .page-header {
+          padding-top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
+        }
+      }
+    }
     .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
     .page-subtitle { font-family: var(--mono); font-size: 11px; color: var(--text3); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -516,13 +523,22 @@
       :root { --sidebar-w: 0px; }
       #sidebar { display: none; }
       #main { margin-left: 0; }
-      .page-content { padding: 16px; }
-      .page-header { padding: 16px 16px 14px; }
+      .page-content { padding: 12px 14px; }
+      .page-header { padding: 14px 14px 12px; }
       .stat-grid-3 { grid-template-columns: 1fr 1fr; }
-      .pulse-grid { grid-template-columns: repeat(2, 1fr); }
-      .hero-stats { grid-template-columns: repeat(2, 1fr); }
+      .pulse-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 8px; }
+      .pulse-num { font-size: 18px !important; }
+      .pulse-lbl { font-size: 9px !important; }
+      .pulse-card { padding: 12px 10px !important; }
+      .hero-stats { grid-template-columns: repeat(3, 1fr) !important; }
+      .hero-stat { padding: 10px 10px !important; }
+      .hero-stat-label { font-size: 9px !important; }
+      .hero-stat-val { font-size: 15px !important; }
+      .hero-number { font-size: 36px !important; }
       #mobile-nav { display: flex !important; }
       .page-title { font-size: 18px; }
+      .stat-value { font-size: 20px; }
+      .stat-value.lg { font-size: 26px; }
     }
 
     /* mobile bottom nav */
