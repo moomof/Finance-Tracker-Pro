@@ -1307,8 +1307,11 @@ function filterExpenses(filter, btn) {
 
 function openIncomeSheet() {
   document.getElementById('income-sheet').classList.add('open');
+  resetSheetScroll('income-sheet');
   document.getElementById('inc-date').value = today();
   showIncomeFormFields(false);
+  const sheet = document.querySelector('#income-sheet .sheet');
+  if (sheet) sheet.scrollTop = 0;
 }
 
 function switchIncomeTab(tab, btn) {
@@ -1401,16 +1404,21 @@ function resetIncomeForm() {
 
 function openExpenseSheet() {
   document.getElementById('expense-sheet').classList.add('open');
+  resetSheetScroll('expense-sheet');
   document.getElementById('exp-date').value = today();
   selectedCategory = ''; receiptFile = null; receiptB64 = null;
   document.getElementById('receipt-preview').classList.add('hidden');
   document.getElementById('expense-ai-status').classList.add('hidden');
+  document.getElementById('desc-ai-status')?.classList.add('hidden');
   document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
   ['exp-amount','exp-merchant','exp-notes'].forEach(id => document.getElementById(id).value = '');
   const hiddenToggle = document.getElementById('business-toggle-hidden');
   if (hiddenToggle) hiddenToggle.value = 'false';
   const taxDisplay = document.getElementById('tax-treatment-display');
   if (taxDisplay) taxDisplay.style.display = 'none';
+  // Reset scroll to top
+  const sheet = document.querySelector('#expense-sheet .sheet');
+  if (sheet) sheet.scrollTop = 0;
 }
 
 const TAX_TREATMENT = {
@@ -1592,6 +1600,7 @@ function showDetail(type, id) {
   document.getElementById('detail-content').innerHTML = rows;
   document.getElementById('detail-delete-btn').onclick = () => deleteEntry(type, id);
   document.getElementById('detail-sheet').classList.add('open');
+  resetSheetScroll('detail-sheet');
 }
 
 async function deleteEntry(type, id) {
@@ -1849,6 +1858,10 @@ function fmt(n) { return '$' + parseFloat(n||0).toLocaleString('en-CA', { minimu
 function fmtDate(d) { return new Date(d+'T12:00:00').toLocaleDateString('en-CA', { month:'short', day:'numeric', year:'numeric' }); }
 function today() { return new Date().toISOString().split('T')[0]; }
 function closeSheets() { document.querySelectorAll('.sheet-overlay').forEach(s => s.classList.remove('open')); }
+function resetSheetScroll(sheetId) {
+  const sheet = document.querySelector(`#${sheetId} .sheet`);
+  if (sheet) sheet.scrollTop = 0;
+}
 
 document.querySelectorAll('.sheet-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) closeSheets(); });
