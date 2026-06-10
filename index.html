@@ -1110,8 +1110,13 @@
       <input type="text" class="form-input" id="exp-merchant" placeholder="Where did you spend?" />
     </div>
     <div class="form-group">
-      <label class="form-label">Notes (optional)</label>
-      <input type="text" class="form-input" id="exp-notes" placeholder="Any details..." />
+      <label class="form-label">What did you buy & why?</label>
+      <textarea class="form-input" id="exp-notes" placeholder="e.g. Groceries for the week — food while working in Toronto away from home. Bought chicken, rice, eggs, OJ." style="min-height:72px;resize:none;font-size:14px"></textarea>
+      <button class="btn btn-outline" onclick="analyzeDescription()" style="margin-top:8px;width:100%;font-size:12px;padding:9px" id="analyze-desc-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:4px"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Analyze with AI → suggest category & tax treatment
+      </button>
+      <div id="desc-ai-status" class="hidden" style="margin-top:8px"></div>
     </div>
     <div id="tax-treatment-display" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px 12px;margin-bottom:14px">
       <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Tax Treatment</div>
@@ -1949,6 +1954,82 @@ async function loadReconcile() {
     statusEl.innerHTML = `<div style="color:var(--red)">✕ ${err.message}</div>`;
   }
 }
+
+// ==================== DESCRIPTION ANALYZER ====================
+
+async function analyzeDescription() {
+  const description = document.getElementById('exp-notes').value.trim();
+  if (!description) { showToast('Write a description first', 'error'); return; }
+  if (!getAnthropicKey()) {
+    showToast('Add your API key in Settings first', 'error');
+    switchView('settings', document.querySelector('[data-view="settings"]'));
+    return;
+  }
+
+  const btn = document.getElementById('analyze-desc-btn');
+  const status = document.getElementById('desc-ai-status');
+  btn.disabled = true;
+  status.className = 'ai-processing';
+  status.innerHTML = `<div class="ai-spinner"></div><div class="ai-text">Analyzing...</div>`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: getAIHeaders(),
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 300,
+        system: `You are a Canadian tax advisor helping a door-to-door sales contractor (Vantage Pest Control) categorize expenses. They work in Toronto all summer, away from their home base in Edmonton. Analyze the expense description and return ONLY valid JSON:
+{
+  "category": "groceries|eating_out|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other",
+  "is_business": true|false,
+  "deductible_rate": 0.0-1.0,
+  "reasoning": "one sentence explanation",
+  "confidence": "high|medium|low"
+}
+Categories: groceries=100% ded (away from home meals), eating_out=50% ded, housing=100%, gas=100%, phone=80%, supplies=100%, laundry=100%, transport=100%, parking=100%, entertainment/personal=0%.
+Return only JSON.`,
+        messages: [{ role: 'user', content: `Expense description: "${description}"` }]
+      })
+    });
+
+    const data = await res.json();
+    const parsed = JSON.parse(data.content[0].text.trim());
+
+    // Apply suggested category
+    if (parsed.category) {
+      const chip = document.querySelector(`.cat-chip[onclick*="'${parsed.category}'"]`);
+      if (chip) selectCat(parsed.category, chip);
+    }
+
+    // Show result
+    const confidenceColor = parsed.confidence === 'high' ? 'var(--green)' : parsed.confidence === 'medium' ? 'var(--amber)' : 'var(--text3)';
+    const deductLabel = parsed.is_business
+      ? `✓ ${Math.round(parsed.deductible_rate * 100)}% deductible`
+      : '✗ Personal / not deductible';
+    const deductColor = parsed.is_business ? 'var(--green)' : 'var(--red)';
+
+    status.className = '';
+    status.innerHTML = `
+      <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:600;color:${deductColor}">${deductLabel}</span>
+          <span style="font-family:var(--mono);font-size:10px;color:${confidenceColor};text-transform:uppercase">${parsed.confidence} confidence</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5">${parsed.reasoning}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:6px">Category set to: ${parsed.category}</div>
+      </div>`;
+
+    showToast('✓ Analysis complete', 'success');
+  } catch(err) {
+    status.className = 'hidden';
+    showToast('Analysis failed', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ==================== END DESCRIPTION ANALYZER ====================
 
 // ==================== PAY RUN PREDICTOR ====================
 
