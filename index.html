@@ -1645,15 +1645,15 @@ function exportCSV(type) {
 
 function exportAccountantReport() {
   const TAX_TREATMENT_LOCAL = {
-    groceries:    { label: 'Groceries (Meals — Away from Home)', rate: 1.0, rateLabel: '100%' },
-    eating_out:   { label: 'Meals — Eating Out', rate: 0.5, rateLabel: '50%' },
-    housing:      { label: 'Temporary Housing', rate: 1.0, rateLabel: '100%' },
-    gas:          { label: 'Vehicle Fuel', rate: 1.0, rateLabel: '100%' },
-    phone:        { label: 'Cell Phone (Business Use)', rate: 0.8, rateLabel: '~80%' },
-    supplies:     { label: 'Work Supplies & Equipment', rate: 1.0, rateLabel: '100%' },
-    laundry:      { label: 'Laundry', rate: 1.0, rateLabel: '100%' },
-    transport:    { label: 'Transportation', rate: 1.0, rateLabel: '100%' },
-    parking:      { label: 'Parking', rate: 1.0, rateLabel: '100%' },
+    groceries:    { label: 'Groceries & Meals (Away from Home Base)', rate: 1.0, rateLabel: '100%', cra: 'CRA: Reasonable living expenses incurred away from home base for work travel. Contractor lives in Edmonton AB, works in Toronto ON.' },
+    eating_out:   { label: 'Meals — Restaurant/Fast Food', rate: 0.5, rateLabel: '50%', cra: 'CRA s.67.1: 50% deductible meal expense for business travel.' },
+    housing:      { label: 'Temporary Accommodation (Toronto)', rate: 1.0, rateLabel: '100%', cra: 'CRA: Temporary lodging away from principal residence for work. Home base: Edmonton AB.' },
+    gas:          { label: 'Vehicle Fuel / Gas Reimbursements', rate: 1.0, rateLabel: '100%', cra: 'CRA: Motor vehicle expenses for business travel including reimbursements to other drivers.' },
+    phone:        { label: 'Cell Phone — Business Use Portion', rate: 0.8, rateLabel: '~80%', cra: 'CRA: Business-use portion of personal cell phone. Estimated 80% business use during work season.' },
+    supplies:     { label: 'Work Supplies & Field Equipment', rate: 1.0, rateLabel: '100%', cra: 'CRA: Supplies and materials used to earn business income.' },
+    laundry:      { label: 'Laundry & Clothing Maintenance', rate: 1.0, rateLabel: '100%', cra: 'CRA: Work clothing maintenance expense away from home.' },
+    transport:    { label: 'Transportation (Transit/Rideshare/Taxi)', rate: 1.0, rateLabel: '100%', cra: 'CRA: Business transportation expense.' },
+    parking:      { label: 'Parking', rate: 1.0, rateLabel: '100%', cra: 'CRA: Parking fees incurred for business purposes.' },
   };
 
   const bizExpenses = expenseData.filter(e => e.is_business);
@@ -1672,101 +1672,159 @@ function exportAccountantReport() {
   const totalDeductible = Object.values(byCategory).reduce((s,c) => s + c.deductible, 0);
   const grossIncome = incomeData.reduce((s,i) => s + parseFloat(i.amount), 0);
 
+  // Flag missing receipts
+  const missingReceipts = bizExpenses.filter(e => !e.receipt_url);
+  const withReceipts = bizExpenses.filter(e => e.receipt_url);
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Tax Expense Report — Vantage 2026</title>
+<title>Self-Employment Expense Report — Vantage 2026</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 0 auto; padding: 40px 24px; color: #1a1a1a; }
-  h1 { font-size: 24px; margin-bottom: 4px; }
-  .subtitle { color: #666; font-size: 14px; margin-bottom: 32px; }
-  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
-  .summary-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px; }
-  .summary-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #888; margin-bottom: 6px; }
-  .summary-value { font-size: 24px; font-weight: 700; }
-  .summary-value.green { color: #16a34a; }
-  .summary-value.red { color: #dc2626; }
-  h2 { font-size: 16px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; margin: 28px 0 16px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 24px; }
-  th { text-align: left; padding: 8px 10px; background: #f5f5f5; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: #666; border-bottom: 2px solid #e0e0e0; }
-  td { padding: 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 960px; margin: 0 auto; padding: 48px 28px; color: #1a1a1a; line-height: 1.5; }
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }
+  .subtitle { color: #555; font-size: 14px; margin-bottom: 8px; }
+  .generated { color: #999; font-size: 12px; margin-bottom: 32px; }
+  .contractor-box { border: 2px solid #1d4ed8; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; background: #eff6ff; }
+  .contractor-box h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.8px; color: #1d4ed8; margin-bottom: 10px; }
+  .contractor-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; font-size: 13px; }
+  .contractor-item label { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #6b7280; margin-bottom: 2px; }
+  .contractor-item span { font-weight: 600; }
+  .note { background: #fefce8; border: 1px solid #fbbf24; border-radius: 6px; padding: 14px 18px; font-size: 13px; color: #78350f; margin-bottom: 24px; }
+  .note strong { color: #92400e; }
+  .warning { background: #fff7ed; border: 1px solid #fb923c; border-radius: 6px; padding: 12px 16px; font-size: 13px; color: #9a3412; margin-bottom: 20px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px; }
+  .summary-card { border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; text-align: center; }
+  .summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: #9ca3af; margin-bottom: 8px; }
+  .summary-value { font-size: 22px; font-weight: 700; }
+  .green { color: #16a34a; }
+  .red { color: #dc2626; }
+  .blue { color: #1d4ed8; }
+  h2 { font-size: 15px; font-weight: 700; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin: 32px 0 14px; text-transform: uppercase; letter-spacing: 0.5px; color: #374151; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 28px; }
+  th { text-align: left; padding: 9px 12px; background: #f9fafb; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #6b7280; border-bottom: 2px solid #e5e7eb; font-weight: 600; }
+  td { padding: 11px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
   tr:last-child td { border-bottom: none; }
-  .amount { font-family: 'SF Mono', 'Courier New', monospace; font-weight: 600; text-align: right; }
-  .receipt-img { max-width: 200px; max-height: 150px; object-fit: cover; border-radius: 4px; border: 1px solid #e0e0e0; margin-top: 4px; }
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
-  .tag-green { background: #dcfce7; color: #16a34a; }
-  .tag-amber { background: #fef9c3; color: #854d0e; }
-  .note { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 12px 16px; font-size: 13px; color: #0369a1; margin-bottom: 24px; }
-  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #888; }
+  tr:hover td { background: #f9fafb; }
+  .mono { font-family: 'SF Mono', 'Courier New', monospace; }
+  .amount { font-family: 'SF Mono', 'Courier New', monospace; font-weight: 600; text-align: right; white-space: nowrap; }
+  .receipt-cell { text-align: center; }
+  .receipt-img { max-width: 160px; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid #e5e7eb; display: block; margin: 0 auto; }
+  .no-receipt { color: #ef4444; font-size: 11px; font-weight: 600; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+  .tag-full { background: #dcfce7; color: #15803d; }
+  .tag-half { background: #fef9c3; color: #a16207; }
+  .tag-partial { background: #dbeafe; color: #1d4ed8; }
+  .cra-ref { font-size: 10px; color: #9ca3af; font-style: italic; margin-top: 3px; }
+  .notes-cell { font-size: 12px; color: #4b5563; max-width: 220px; }
+  .total-row td { background: #f0fdf4; font-weight: 700; border-top: 2px solid #16a34a; }
+  .section-divider { margin: 8px 0; padding: 6px 12px; background: #f3f4f6; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7280; }
+  .footer { margin-top: 48px; padding-top: 20px; border-top: 2px solid #e5e7eb; font-size: 11px; color: #9ca3af; display: flex; justify-content: space-between; }
+  @media print { body { padding: 20px; } .no-print { display: none; } }
 </style>
 </head>
 <body>
-<h1>Business Expense Report</h1>
-<div class="subtitle">Vantage Pest Control · 2026 Summer Season · Independent Contractor</div>
+
+<h1>Self-Employment Business Expense Report</h1>
+<div class="subtitle">Vantage Pest Control Marketing Inc. · 2026 Summer Sales Season</div>
+<div class="generated">Generated: ${new Date().toLocaleDateString('en-CA', {weekday:'long',year:'numeric',month:'long',day:'numeric'})} · Finance Tracker Pro · All amounts in CAD</div>
+
+<div class="contractor-box">
+  <h3>Contractor Information</h3>
+  <div class="contractor-grid">
+    <div class="contractor-item"><label>Contractor</label><span>Trent (moomof)</span></div>
+    <div class="contractor-item"><label>Employment Type</label><span>Independent Contractor</span></div>
+    <div class="contractor-item"><label>Payer</label><span>Vantage Pest Control Marketing Inc.</span></div>
+    <div class="contractor-item"><label>Home Province</label><span>Alberta (Edmonton)</span></div>
+    <div class="contractor-item"><label>Work Province</label><span>Ontario (Toronto)</span></div>
+    <div class="contractor-item"><label>Season</label><span>May 4 – August 28, 2026</span></div>
+  </div>
+</div>
 
 <div class="note">
-  <strong>Note to Accountant:</strong> This contractor was based in Edmonton, AB and worked in Toronto, ON for the full 2026 summer season (May–August) as an independent contractor for Vantage Pest Control. All meal, housing, and transportation expenses were incurred away from their home base. Meal deductions are claimed at the applicable CRA rate for business travel. Phone deduction reflects estimated business-use percentage.
+  <strong>Note to Accountant:</strong> This contractor is an independent contractor (not employee) for Vantage Pest Control. They reside in Edmonton, AB and relocated to Toronto, ON for the full 2026 summer season. All meal, accommodation, and transportation expenses listed were incurred in Toronto while away from their principal residence. Meal deductions at 50% per CRA s.67.1 (eating out) or 100% for groceries/living expenses as reasonable away-from-home costs. Gas reimbursements to other drivers are claimed as motor vehicle/transport expenses. Phone deduction reflects estimated 80% business use during the work season.
 </div>
+
+${missingReceipts.length > 0 ? `<div class="warning">
+  ⚠️ <strong>${missingReceipts.length} expense${missingReceipts.length > 1 ? 's' : ''} without receipt documentation:</strong>
+  ${missingReceipts.map(e => `${e.expense_date} · ${e.merchant || e.category} · $${parseFloat(e.amount).toFixed(2)}`).join(' | ')}
+  <br><span style="font-size:12px">These are included in totals but may require additional documentation.</span>
+</div>` : '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;font-size:13px;color:#15803d;margin-bottom:20px">✓ All expenses have receipt documentation attached.</div>'}
 
 <div class="summary-grid">
   <div class="summary-card">
     <div class="summary-label">Gross Income Received</div>
-    <div class="summary-value green">$${grossIncome.toLocaleString('en-CA', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    <div class="summary-value green mono">$${grossIncome.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Total Business Expenses</div>
-    <div class="summary-value red">$${totalSpent.toLocaleString('en-CA', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    <div class="summary-value red mono">$${totalSpent.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
   </div>
   <div class="summary-card">
     <div class="summary-label">Est. Total Deductible</div>
-    <div class="summary-value green">$${totalDeductible.toLocaleString('en-CA', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+    <div class="summary-value green mono">$${totalDeductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-label">Receipts Attached</div>
+    <div class="summary-value blue">${withReceipts.length} / ${bizExpenses.length}</div>
   </div>
 </div>
 
-<h2>Expense Summary by Category</h2>
+<h2>Summary by Category</h2>
 <table>
-  <thead><tr><th>Category</th><th>Description</th><th>Entries</th><th>Total Spent</th><th>Rate</th><th style="text-align:right">Deductible Amount</th></tr></thead>
+  <thead><tr><th>Category</th><th>CRA Description</th><th>#</th><th style="text-align:right">Total Spent</th><th>Rate</th><th style="text-align:right">Deductible</th></tr></thead>
   <tbody>
-    ${Object.entries(byCategory).map(([cat, data]) => {
-      const tx = TAX_TREATMENT_LOCAL[cat] || { label: cat, rate: 1.0, rateLabel: '100%' };
+    ${Object.entries(byCategory).sort((a,b) => b[1].deductible - a[1].deductible).map(([cat, data]) => {
+      const tx = TAX_TREATMENT_LOCAL[cat] || { label: cat, rate: 1.0, rateLabel: '100%', cra: '' };
+      const tagClass = tx.rate >= 1 ? 'tag-full' : tx.rate >= 0.5 ? 'tag-half' : 'tag-partial';
       return `<tr>
-        <td><strong>${cat}</strong></td>
-        <td style="color:#666">${tx.label}</td>
-        <td>${data.count}</td>
+        <td><strong style="text-transform:capitalize">${cat.replace('_',' ')}</strong></td>
+        <td><div>${tx.label}</div><div class="cra-ref">${tx.cra || ''}</div></td>
+        <td class="mono">${data.count}</td>
         <td class="amount">$${data.total.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-        <td><span class="tag tag-${tx.rate >= 1 ? 'green' : 'amber'}">${tx.rateLabel}</span></td>
-        <td class="amount" style="color:#16a34a">$${data.deductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td><span class="tag ${tagClass}">${tx.rateLabel}</span></td>
+        <td class="amount green">$${data.deductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
       </tr>`;
     }).join('')}
-    <tr style="background:#f5f5f5;font-weight:700">
+    <tr class="total-row">
       <td colspan="3"><strong>TOTAL</strong></td>
       <td class="amount">$${totalSpent.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
       <td></td>
-      <td class="amount" style="color:#16a34a">$${totalDeductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      <td class="amount green">$${totalDeductible.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
     </tr>
   </tbody>
 </table>
 
-<h2>Itemized Business Expenses</h2>
+<h2>Itemized Expenses with Receipts</h2>
 <table>
-  <thead><tr><th>Date</th><th>Merchant</th><th>Category</th><th>Notes</th><th style="text-align:right">Amount</th><th>Receipt</th></tr></thead>
+  <thead><tr><th>Date</th><th>Merchant / Description</th><th>Category</th><th>Notes & Business Purpose</th><th style="text-align:right">Amount</th><th style="text-align:right">Deductible</th><th>Receipt</th></tr></thead>
   <tbody>
-    ${bizExpenses.sort((a,b) => a.expense_date.localeCompare(b.expense_date)).map(e => `
-    <tr>
-      <td style="white-space:nowrap">${e.expense_date}</td>
-      <td><strong>${e.merchant || '—'}</strong></td>
-      <td>${e.category}</td>
-      <td style="color:#666;font-size:12px">${e.notes || '—'}</td>
-      <td class="amount">$${parseFloat(e.amount).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-      <td>${e.receipt_url ? `<img src="${e.receipt_url}" class="receipt-img" />` : '<span style="color:#aaa;font-size:12px">No receipt</span>'}</td>
-    </tr>`).join('')}
+    ${bizExpenses.sort((a,b) => a.expense_date.localeCompare(b.expense_date)).map(e => {
+      const tx = TAX_TREATMENT_LOCAL[e.category] || { rate: 1.0 };
+      const deductAmt = parseFloat(e.amount) * tx.rate;
+      const hasReceipt = !!e.receipt_url;
+      return `<tr style="${!hasReceipt ? 'background:#fff7ed' : ''}">
+        <td class="mono" style="white-space:nowrap;font-size:12px">${e.expense_date}</td>
+        <td><strong>${e.merchant || '—'}</strong></td>
+        <td style="font-size:12px;text-transform:capitalize">${(e.category||'').replace('_',' ')}</td>
+        <td class="notes-cell">${e.notes || '<span style="color:#d1d5db">No description</span>'}</td>
+        <td class="amount">$${parseFloat(e.amount).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td class="amount green">$${deductAmt.toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+        <td class="receipt-cell">${hasReceipt
+          ? `<img src="${e.receipt_url}" class="receipt-img" alt="Receipt ${e.expense_date}" />`
+          : '<span class="no-receipt">⚠ Missing</span>'}</td>
+      </tr>`;
+    }).join('')}
   </tbody>
 </table>
 
 <div class="footer">
-  Generated by Finance Tracker Pro · ${new Date().toLocaleDateString('en-CA', {year:'numeric',month:'long',day:'numeric'})} · All amounts in CAD
+  <span>Finance Tracker Pro · Self-Employment Expense Report · 2026 Season</span>
+  <span>Generated ${new Date().toLocaleDateString('en-CA')} · ${bizExpenses.length} expenses · CAD</span>
 </div>
+
 </body>
 </html>`;
 
@@ -2038,16 +2096,28 @@ async function analyzeDescription() {
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
         max_tokens: 300,
-        system: `You are a Canadian tax advisor helping a door-to-door sales contractor (Vantage Pest Control) categorize expenses. They work in Toronto all summer, away from their home base in Edmonton. Analyze the expense description and return ONLY valid JSON:
+        system: `You are a Canadian CRA tax expert helping a door-to-door pest control sales contractor file self-employment expenses. Key facts about this person:
+- Independent contractor for Vantage Pest Control, Toronto East territory
+- Home base: Edmonton, AB. Work location: Toronto, ON (full summer May-August)
+- All meals, housing, transport in Toronto = business expenses (away from home base)
+- Paid via e-transfer, cash, or card — payment method doesn't change deductibility
+- Gas reimbursements to friends/coworkers for driving = deductible transport expense
+- Sunscreen, water, comfortable shoes, work bags = deductible supplies (needed for field work)
+
+Analyze the expense and return ONLY valid JSON:
 {
   "category": "groceries|eating_out|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other",
   "is_business": true|false,
   "deductible_rate": 0.0-1.0,
-  "reasoning": "one sentence explanation",
+  "reasoning": "one clear sentence explaining why and the CRA basis",
+  "cra_note": "optional extra note for accountant if complex",
   "confidence": "high|medium|low"
 }
-Categories: groceries=100% ded (away from home meals), eating_out=50% ded, housing=100%, gas=100%, phone=80%, supplies=100%, laundry=100%, transport=100%, parking=100%, entertainment/personal=0%.
-Return only JSON.`,
+Deductible rates: groceries=1.0, eating_out=0.5 (CRA 50% rule), housing=1.0, gas=1.0, phone=0.8, supplies=1.0, laundry=1.0, transport=1.0, parking=1.0, entertainment=0.0, personal=0.0.
+E-transfers to friends for gas/rides = transport, 100% deductible.
+Groceries at any store (Walmart, No Frills, etc) = groceries category.
+Be generous but accurate — this person legitimately incurs these costs for work.
+Return only JSON, no markdown.`,
         messages: [{ role: 'user', content: `Expense description: "${description}"` }]
       })
     });
@@ -2071,12 +2141,13 @@ Return only JSON.`,
     status.className = '';
     status.innerHTML = `
       <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 14px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:13px;font-weight:600;color:${deductColor}">${deductLabel}</span>
-          <span style="font-family:var(--mono);font-size:10px;color:${confidenceColor};text-transform:uppercase">${parsed.confidence} confidence</span>
+          <span style="font-family:var(--mono);font-size:10px;color:${confidenceColor};text-transform:uppercase;background:var(--surface3);padding:2px 6px;border-radius:4px">${parsed.confidence}</span>
         </div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.5">${parsed.reasoning}</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:6px">Category set to: ${parsed.category}</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:6px">${parsed.reasoning}</div>
+        ${parsed.cra_note ? `<div style="font-size:11px;color:var(--amber);line-height:1.4;padding:6px 8px;background:var(--amber-dim);border-radius:5px;margin-bottom:6px">📋 ${parsed.cra_note}</div>` : ''}
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">→ Category: ${parsed.category} · ${Math.round(parsed.deductible_rate*100)}% deductible</div>
       </div>`;
 
     showToast('✓ Analysis complete', 'success');
