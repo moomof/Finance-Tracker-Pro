@@ -1185,6 +1185,9 @@
       <button class="sheet-close" onclick="closeSheets()">✕</button>
     </div>
     <div id="detail-content"></div>
+    <div id="detail-edit-content" style="display:none"></div>
+    <button class="btn btn-primary" id="detail-edit-btn" style="margin-bottom:10px">Edit Entry</button>
+    <button class="btn btn-primary" id="detail-save-btn" style="margin-bottom:10px;display:none">Save Changes</button>
     <button class="delete-btn" id="detail-delete-btn">Delete Entry</button>
   </div>
 </div>
@@ -1670,8 +1673,85 @@ function showDetail(type, id) {
   }
   document.getElementById('detail-content').innerHTML = rows;
   document.getElementById('detail-delete-btn').onclick = () => deleteEntry(type, id);
+
+  // Reset to view mode
+  document.getElementById('detail-content').style.display = 'block';
+  document.getElementById('detail-edit-content').style.display = 'none';
+  document.getElementById('detail-edit-btn').style.display = 'block';
+  document.getElementById('detail-save-btn').style.display = 'none';
+  document.getElementById('detail-edit-btn').onclick = () => enterEditMode(type, id);
+
   document.getElementById('detail-sheet').classList.add('open');
   resetSheetScroll('detail-sheet');
+}
+
+function enterEditMode(type, id) {
+  const item = type === 'income' ? incomeData.find(i => i.id===id) : expenseData.find(e => e.id===id);
+  if (!item) return;
+  const editEl = document.getElementById('detail-edit-content');
+
+  if (type === 'income') {
+    editEl.innerHTML = `
+      <div class="form-group"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-input" id="edit-amount" value="${item.amount}"></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="edit-date" value="${item.credit_date}"></div>
+      <div class="form-group"><label class="form-label">Pay Run #</label><input type="text" class="form-input" id="edit-payrun" value="${item.pay_run_number||''}"></div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-input" id="edit-notes" value="${item.notes||''}"></div>`;
+  } else {
+    const cats = ['groceries','eating_out','housing','gas','phone','supplies','laundry','transport','parking','entertainment','personal','other'];
+    editEl.innerHTML = `
+      <div class="form-group"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-input" id="edit-amount" value="${item.amount}"></div>
+      <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="edit-date" value="${item.expense_date}"></div>
+      <div class="form-group"><label class="form-label">Merchant</label><input type="text" class="form-input" id="edit-merchant" value="${item.merchant||''}"></div>
+      <div class="form-group"><label class="form-label">Category</label><select class="form-input" id="edit-category">${cats.map(c => `<option value="${c}" ${c===item.category?'selected':''}>${c.replace('_',' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Notes / Description</label><textarea class="form-input" id="edit-notes" style="min-height:60px">${item.notes||''}</textarea></div>`;
+  }
+
+  document.getElementById('detail-content').style.display = 'none';
+  editEl.style.display = 'block';
+  document.getElementById('detail-edit-btn').style.display = 'none';
+  document.getElementById('detail-save-btn').style.display = 'block';
+  document.getElementById('detail-save-btn').onclick = () => saveEdit(type, id);
+}
+
+async function saveEdit(type, id) {
+  if (isSaving) return;
+  isSaving = true;
+  const saveBtn = document.getElementById('detail-save-btn');
+  saveBtn.disabled = true; saveBtn.textContent = 'Saving...';
+
+  try {
+    let payload, table;
+    if (type === 'income') {
+      table = 'income_entries';
+      payload = {
+        amount: parseFloat(document.getElementById('edit-amount').value),
+        credit_date: document.getElementById('edit-date').value,
+        pay_run_number: document.getElementById('edit-payrun').value || null,
+        notes: document.getElementById('edit-notes').value || null,
+      };
+    } else {
+      table = 'expense_entries';
+      const cat = document.getElementById('edit-category').value;
+      const tx = TAX_TREATMENT[cat] || { deductible: false };
+      payload = {
+        amount: parseFloat(document.getElementById('edit-amount').value),
+        expense_date: document.getElementById('edit-date').value,
+        merchant: document.getElementById('edit-merchant').value || null,
+        category: cat,
+        is_business: tx.deductible,
+        notes: document.getElementById('edit-notes').value || null,
+      };
+    }
+    const { error } = await sb.from(table).update(payload).eq('id', id);
+    if (error) { showToast('Update failed', 'error'); return; }
+    closeSheets();
+    if (type === 'income') await loadIncome(); else await loadExpenses();
+    updateDashboard();
+    showToast('Entry updated', 'success');
+  } finally {
+    isSaving = false;
+    saveBtn.disabled = false; saveBtn.textContent = 'Save Changes';
+  }
 }
 
 async function deleteEntry(type, id) {
