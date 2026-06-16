@@ -472,6 +472,23 @@
     }
     .tab-btn.active { background: var(--surface2); color: var(--text); }
 
+    /* ── SORT CONTROLS ── */
+    .sort-btn {
+      padding: 5px 12px; border-radius: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text3); font-family: var(--font); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .sort-btn.active { background: var(--surface3); color: var(--text); border-color: var(--border2); }
+    .sort-dir {
+      width: 30px; height: 28px; border-radius: 6px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text2); font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .sort-dir:hover { background: var(--surface3); }
+
     /* ── TOGGLE ── */
     .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
     .toggle-label { font-size: 13px; color: var(--text); }
@@ -755,6 +772,12 @@
           <button class="tab-btn active" onclick="filterExpenses('all',this)">All</button>
           <button class="tab-btn" onclick="filterExpenses('business',this)">Business</button>
           <button class="tab-btn" onclick="filterExpenses('personal',this)">Personal</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Sort:</span>
+          <button class="sort-btn active" id="sort-date" onclick="setExpenseSort('date')">Date</button>
+          <button class="sort-btn" id="sort-amount" onclick="setExpenseSort('amount')">Amount</button>
+          <button class="sort-dir" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle direction">↓</button>
         </div>
         <div class="card-table">
           <table class="entry-table">
@@ -1075,7 +1098,7 @@
         <label class="form-label">Full Reference #</label>
         <input type="text" class="form-input" id="inc-ref" placeholder="CT-35-612-CAD" />
       </div>
-      <button class="btn btn-primary" onclick="saveIncome()">Save Payment</button>
+      <button class="btn btn-primary" id="save-income-btn" onclick="saveIncome()">Save Payment</button>
     </div>
   </div>
 </div>
@@ -1149,7 +1172,7 @@
       <div style="font-size:11px;color:var(--text3);margin-top:2px" id="tax-treatment-note">—</div>
     </div>
     <input type="hidden" id="business-toggle-hidden" value="false">
-    <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
+    <button class="btn btn-primary" id="save-expense-btn" onclick="saveExpense()">Save Expense</button>
   </div>
 </div>
 
@@ -1188,7 +1211,10 @@ let expenseData = [];
 let selectedCategory = '';
 let receiptFile = null;
 let receiptB64 = null;
+let isSaving = false;
 let currentExpenseFilter = 'all';
+let expenseSortBy = 'date';
+let expenseSortDir = 'desc';
 let detailType = '';
 let detailId = '';
 
@@ -1243,9 +1269,9 @@ function updateDashboard() {
   document.getElementById('dash-remaining-num').textContent = fmt(byType('remaining_backend'));
 
   const recent = [
-    ...incomeData.slice(0,4).map(i => ({...i, _t:'income'})),
-    ...expenseData.slice(0,4).map(e => ({...e, _t:'expense'}))
-  ].sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0,6);
+    ...incomeData.map(i => ({...i, _t:'income', _date: i.credit_date})),
+    ...expenseData.map(e => ({...e, _t:'expense', _date: e.expense_date}))
+  ].sort((a,b) => b._date.localeCompare(a._date)).slice(0,6);
 
   const el = document.getElementById('dash-recent');
   if (recent.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>No activity yet</div>`; return; }
@@ -1260,13 +1286,14 @@ function renderIncome() {
   const total = incomeData.reduce((s,i) => s + parseFloat(i.amount), 0);
   document.getElementById('income-total').textContent = fmt(total);
   document.getElementById('income-count').textContent = `${incomeData.length} payment${incomeData.length!==1?'s':''}`;
-  const last = incomeData[0];
+  const sortedIncome = [...incomeData].sort((a,b) => b.credit_date.localeCompare(a.credit_date));
+  const last = sortedIncome[0];
   document.getElementById('income-last').textContent = last ? fmt(last.amount) : '—';
   document.getElementById('income-last-date').textContent = last ? fmtDate(last.credit_date) : '—';
 
   const tbody = document.getElementById('income-list');
   if (incomeData.length === 0) { tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>No payments logged yet</div></td></tr>`; return; }
-  tbody.innerHTML = incomeData.map(i => `
+  tbody.innerHTML = sortedIncome.map(i => `
     <tr onclick="showDetail('income','${i.id}')">
       <td style="font-weight:500">${i.pay_run_number||'Payment'}</td>
       <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(i.credit_date)}</td>
@@ -1282,9 +1309,18 @@ function renderExpenses() {
   document.getElementById('expense-deductible').textContent = fmt(deductible);
   document.getElementById('expense-count').textContent = `${expenseData.length} entr${expenseData.length!==1?'ies':'y'}`;
 
-  let filtered = expenseData;
+  let filtered = [...expenseData];
   if (currentExpenseFilter === 'business') filtered = expenseData.filter(e => e.is_business);
   if (currentExpenseFilter === 'personal') filtered = expenseData.filter(e => !e.is_business);
+  filtered = filtered.sort((a,b) => {
+    let cmp;
+    if (expenseSortBy === 'amount') {
+      cmp = parseFloat(a.amount) - parseFloat(b.amount);
+    } else {
+      cmp = a.expense_date.localeCompare(b.expense_date);
+    }
+    return expenseSortDir === 'desc' ? -cmp : cmp;
+  });
 
   const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
   const tbody = document.getElementById('expense-list');
@@ -1302,6 +1338,19 @@ function filterExpenses(filter, btn) {
   currentExpenseFilter = filter;
   document.querySelectorAll('#view-expenses .tab-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
+  renderExpenses();
+}
+
+function setExpenseSort(by) {
+  expenseSortBy = by;
+  document.getElementById('sort-date').classList.toggle('active', by === 'date');
+  document.getElementById('sort-amount').classList.toggle('active', by === 'amount');
+  renderExpenses();
+}
+
+function toggleSortDir() {
+  expenseSortDir = expenseSortDir === 'desc' ? 'asc' : 'desc';
+  document.getElementById('sort-dir-btn').textContent = expenseSortDir === 'desc' ? '↓' : '↑';
   renderExpenses();
 }
 
@@ -1374,25 +1423,36 @@ For payment_type: "Commission Tracker" = advance, "backend" = backend, "remainin
 }
 
 async function saveIncome() {
+  if (isSaving) return;
   const amount = parseFloat(document.getElementById('inc-amount').value);
   const date = document.getElementById('inc-date').value;
   if (!amount || !date) return showToast('Amount and date required', 'error');
-  const payload = {
-    amount, credit_date: date,
-    pay_run_number: document.getElementById('inc-payrun').value || null,
-    ref_number: document.getElementById('inc-ref').value || null,
-    payment_type: document.getElementById('inc-type').value,
-    notes: document.getElementById('inc-notes').value || null,
-    raw_paste: document.getElementById('paste-input').value || null,
-    sender: 'VANTAGE PEST CONTROL MARKETING INC.'
-  };
-  const { error } = await sb.from('income_entries').insert([payload]);
-  if (error) return showToast('Save failed', 'error');
-  closeSheets();
-  await loadIncome();
-  updateDashboard();
-  showToast(`+${fmt(amount)} logged`, 'success');
-  resetIncomeForm();
+
+  isSaving = true;
+  const saveBtn = document.getElementById('save-income-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; saveBtn.style.opacity = '0.6'; }
+
+  try {
+    const payload = {
+      amount, credit_date: date,
+      pay_run_number: document.getElementById('inc-payrun').value || null,
+      ref_number: document.getElementById('inc-ref').value || null,
+      payment_type: document.getElementById('inc-type').value,
+      notes: document.getElementById('inc-notes').value || null,
+      raw_paste: document.getElementById('paste-input').value || null,
+      sender: 'VANTAGE PEST CONTROL MARKETING INC.'
+    };
+    const { error } = await sb.from('income_entries').insert([payload]);
+    if (error) { showToast('Save failed', 'error'); return; }
+    closeSheets();
+    await loadIncome();
+    updateDashboard();
+    showToast(`+${fmt(amount)} logged`, 'success');
+    resetIncomeForm();
+  } finally {
+    isSaving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Payment'; saveBtn.style.opacity = '1'; }
+  }
 }
 
 function resetIncomeForm() {
@@ -1539,34 +1599,45 @@ async function handleReceiptUpload(event) {
 }
 
 async function saveExpense() {
+  if (isSaving) return;
   const amount = parseFloat(document.getElementById('exp-amount').value);
   const date = document.getElementById('exp-date').value;
   if (!amount || !date) return showToast('Amount and date required', 'error');
   if (!selectedCategory) return showToast('Select a category', 'error');
-  let receipt_url = null;
-  if (receiptFile && receiptB64) {
-    const fileName = `receipt_${Date.now()}.${receiptFile.name.split('.').pop()}`;
-    const { error: upErr } = await sb.storage.from('receipts').upload(fileName, receiptFile, { contentType: receiptFile.type });
-    if (!upErr) {
-      const { data: urlData } = sb.storage.from('receipts').getPublicUrl(fileName);
-      receipt_url = urlData.publicUrl;
+
+  isSaving = true;
+  const saveBtn = document.getElementById('save-expense-btn');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; saveBtn.style.opacity = '0.6'; }
+
+  try {
+    let receipt_url = null;
+    if (receiptFile && receiptB64) {
+      const fileName = `receipt_${Date.now()}.${receiptFile.name.split('.').pop()}`;
+      const { error: upErr } = await sb.storage.from('receipts').upload(fileName, receiptFile, { contentType: receiptFile.type });
+      if (!upErr) {
+        const { data: urlData } = sb.storage.from('receipts').getPublicUrl(fileName);
+        receipt_url = urlData.publicUrl;
+      }
     }
+    const tx = TAX_TREATMENT[selectedCategory] || { deductible: false, rate: 0 };
+    const payload = {
+      amount, expense_date: date,
+      merchant: document.getElementById('exp-merchant').value || null,
+      category: selectedCategory,
+      is_business: tx.deductible,
+      notes: document.getElementById('exp-notes').value || null,
+      receipt_url
+    };
+    const { error } = await sb.from('expense_entries').insert([payload]);
+    if (error) { showToast('Save failed', 'error'); return; }
+    closeSheets();
+    await loadExpenses();
+    updateDashboard();
+    showToast(`−${fmt(amount)} logged`, 'success');
+  } finally {
+    isSaving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Expense'; saveBtn.style.opacity = '1'; }
   }
-  const tx = TAX_TREATMENT[selectedCategory] || { deductible: false, rate: 0 };
-  const payload = {
-    amount, expense_date: date,
-    merchant: document.getElementById('exp-merchant').value || null,
-    category: selectedCategory,
-    is_business: tx.deductible,
-    notes: document.getElementById('exp-notes').value || null,
-    receipt_url
-  };
-  const { error } = await sb.from('expense_entries').insert([payload]);
-  if (error) return showToast('Save failed', 'error');
-  closeSheets();
-  await loadExpenses();
-  updateDashboard();
-  showToast(`−${fmt(amount)} logged`, 'success');
 }
 
 function showDetail(type, id) {
