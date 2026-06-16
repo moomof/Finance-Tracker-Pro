@@ -1113,12 +1113,19 @@
     </div>
     <div class="form-group">
       <label class="form-label">Receipt Photo (optional)</label>
-      <div class="receipt-upload">
-        <input type="file" accept="image/*" id="receipt-input" onchange="handleReceiptUpload(event)" />
-        <div>📷</div>
-        <div class="receipt-upload-text">Tap to take photo or choose from library</div>
-        <div class="receipt-upload-sub">AI extracts details automatically</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('receipt-camera').click()" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px">
+          <span style="font-size:24px">📷</span>
+          <span style="font-size:12px">Take Photo</span>
+        </button>
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('receipt-library').click()" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 8px">
+          <span style="font-size:24px">🖼️</span>
+          <span style="font-size:12px">Choose from Library</span>
+        </button>
       </div>
+      <input type="file" accept="image/*" capture="environment" id="receipt-camera" onchange="handleReceiptUpload(event)" style="display:none" />
+      <input type="file" accept="image/*" id="receipt-library" onchange="handleReceiptUpload(event)" style="display:none" />
+      <div style="text-align:center;font-size:11px;color:var(--text3);font-family:var(--mono)">AI extracts details automatically</div>
       <img id="receipt-preview" class="receipt-preview hidden" />
     </div>
     <div id="expense-ai-status" class="hidden"></div>
