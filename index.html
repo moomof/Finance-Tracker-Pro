@@ -1133,10 +1133,11 @@
       <label class="form-label">Category</label>
       <div style="font-family:var(--mono);font-size:9px;color:var(--green);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">✓ Business Deductible</div>
       <div class="cat-grid" style="margin-bottom:10px">
-        <div class="cat-chip" onclick="selectCat('groceries',this)"><span>🛒</span>Groceries<div style="font-size:8px;opacity:0.6;margin-top:1px">50% ded.</div></div>
-        <div class="cat-chip" onclick="selectCat('eating_out',this)"><span>🍔</span>Eating Out<div style="font-size:8px;opacity:0.6;margin-top:1px">50% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('business_meal',this)"><span>🤝</span>Business Meal<div style="font-size:8px;opacity:0.6;margin-top:1px">50% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('eating_out',this)"><span>🍔</span>Eating Out<div style="font-size:8px;opacity:0.6;margin-top:1px">personal</div></div>
+        <div class="cat-chip" onclick="selectCat('groceries',this)"><span>🛒</span>Groceries<div style="font-size:8px;opacity:0.6;margin-top:1px">personal</div></div>
         <div class="cat-chip" onclick="selectCat('housing',this)"><span>🏠</span>Housing<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
-        <div class="cat-chip" onclick="selectCat('gas',this)"><span>⛽</span>Gas<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
+        <div class="cat-chip" onclick="selectCat('gas',this)"><span>⛽</span>Gas<div style="font-size:8px;opacity:0.6;margin-top:1px">personal</div></div>
         <div class="cat-chip" onclick="selectCat('phone',this)"><span>📱</span>Phone<div style="font-size:8px;opacity:0.6;margin-top:1px">partial ded.</div></div>
         <div class="cat-chip" onclick="selectCat('supplies',this)"><span>🎒</span>Supplies<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
         <div class="cat-chip" onclick="selectCat('laundry',this)"><span>👕</span>Laundry<div style="font-size:8px;opacity:0.6;margin-top:1px">100% ded.</div></div>
@@ -1264,7 +1265,7 @@ function updateDashboard() {
   const gross = incomeData.reduce((s,i) => s + parseFloat(i.amount), 0);
   const expenses = expenseData.reduce((s,e) => s + parseFloat(e.amount), 0);
   const net = gross - expenses;
-  const deductible = expenseData.filter(e => e.is_business).reduce((s,e) => s + parseFloat(e.amount), 0);
+  const deductible = totalDeductible(expenseData.filter(isDeductible));
   const byType = t => incomeData.filter(i => i.payment_type === t).reduce((s,i) => s + parseFloat(i.amount), 0);
 
   document.getElementById('dash-net').textContent = fmt(net);
@@ -1287,8 +1288,8 @@ function updateDashboard() {
   if (recent.length === 0) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div>No activity yet</div>`; return; }
   el.innerHTML = `<table class="entry-table"><tbody>` + recent.map(item => {
     if (item._t === 'income') return `<tr onclick="showDetail('income','${item.id}')"><td>${item.pay_run_number||'Payment'}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(item.credit_date)}</td><td><span class="tag tag-${item.payment_type}">${item.payment_type}</span></td><td class="amount-cell" style="text-align:right;color:var(--green)">+${fmt(item.amount)}</td></tr>`;
-    const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
-    return `<tr onclick="showDetail('expense','${item.id}')"><td>${catEmoji[item.category]||'📦'} ${item.merchant||item.category}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(item.expense_date)}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${item.category}</td><td class="amount-cell" style="text-align:right;color:var(--red)">−${fmt(item.amount)}</td></tr>`;
+    const catEmoji = {business_meal:'🤝',groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
+    return `<tr onclick="showDetail('expense','${item.id}')"><td>${catEmoji[item.category]||'📦'} ${escHtml(item.merchant||item.category)}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(item.expense_date)}</td><td style="color:var(--text3);font-family:var(--mono);font-size:11px">${item.category}</td><td class="amount-cell" style="text-align:right;color:var(--red)">−${fmt(item.amount)}</td></tr>`;
   }).join('') + `</tbody></table>`;
 }
 
@@ -1314,14 +1315,14 @@ function renderIncome() {
 
 function renderExpenses() {
   const total = expenseData.reduce((s,e) => s + parseFloat(e.amount), 0);
-  const deductible = expenseData.filter(e => e.is_business).reduce((s,e) => s + parseFloat(e.amount), 0);
+  const deductible = totalDeductible(expenseData.filter(isDeductible));
   document.getElementById('expense-total').textContent = fmt(total);
   document.getElementById('expense-deductible').textContent = fmt(deductible);
   document.getElementById('expense-count').textContent = `${expenseData.length} entr${expenseData.length!==1?'ies':'y'}`;
 
   let filtered = [...expenseData];
-  if (currentExpenseFilter === 'business') filtered = expenseData.filter(e => e.is_business);
-  if (currentExpenseFilter === 'personal') filtered = expenseData.filter(e => !e.is_business);
+  if (currentExpenseFilter === 'business') filtered = expenseData.filter(isDeductible);
+  if (currentExpenseFilter === 'personal') filtered = expenseData.filter(e => !isDeductible(e));
   filtered = filtered.sort((a,b) => {
     let cmp;
     if (expenseSortBy === 'amount') {
@@ -1332,14 +1333,14 @@ function renderExpenses() {
     return expenseSortDir === 'desc' ? -cmp : cmp;
   });
 
-  const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
+  const catEmoji = {business_meal:'🤝',groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
   const tbody = document.getElementById('expense-list');
   if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="4"><div class="empty"><div class="empty-icon">📭</div>No expenses yet</div></td></tr>`; return; }
   tbody.innerHTML = filtered.map(e => `
     <tr onclick="showDetail('expense','${e.id}')">
-      <td style="font-weight:500">${catEmoji[e.category]||'📦'} ${e.merchant||'—'}</td>
+      <td style="font-weight:500">${catEmoji[e.category]||'📦'} ${escHtml(e.merchant||'—')}</td>
       <td style="color:var(--text3);font-family:var(--mono);font-size:11px">${fmtDate(e.expense_date)}</td>
-      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${e.category}${e.is_business?' · biz':''}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--text3)">${e.category}${isDeductible(e)?' · biz':''}</td>
       <td class="amount-cell" style="text-align:right;color:var(--red)">−${fmt(e.amount)}</td>
     </tr>`).join('');
 }
@@ -1417,7 +1418,7 @@ For payment_type: "Commission Tracker" = advance, "backend" = backend, "remainin
     const depositMatch = rawDeposit.match(/\{[\s\S]*\}/);
     if (!depositMatch) throw new Error('No JSON in response');
     const parsed = JSON.parse(depositMatch[0]);
-    document.getElementById('inc-amount').value = parsed.amount || '';
+    document.getElementById('inc-amount').value = parseAmount(parsed.amount);
     document.getElementById('inc-date').value = parsed.credit_date || today();
     document.getElementById('inc-payrun').value = parsed.pay_run_number || '';
     document.getElementById('inc-ref').value = parsed.ref_number || '';
@@ -1437,6 +1438,16 @@ async function saveIncome() {
   const amount = parseFloat(document.getElementById('inc-amount').value);
   const date = document.getElementById('inc-date').value;
   if (!amount || !date) return showToast('Amount and date required', 'error');
+
+  // Duplicate guard — warn if a payment with the same date + amount (+ pay run) exists.
+  const dupPayrun = document.getElementById('inc-payrun').value || null;
+  const dupInc = findDuplicate('income', { amount, credit_date: date, pay_run_number: dupPayrun });
+  if (dupInc) {
+    const when = fmtDate(dupInc.credit_date);
+    if (!confirm(`Possible duplicate:\n\n${dupInc.pay_run_number || 'Payment'} · ${fmt(dupInc.amount)} · ${when}\n\nYou already logged a payment with this date and amount. Save anyway?`)) {
+      return;
+    }
+  }
 
   isSaving = true;
   const saveBtn = document.getElementById('save-income-btn');
@@ -1492,10 +1503,11 @@ function openExpenseSheet() {
 }
 
 const TAX_TREATMENT = {
-  groceries:    { label: '✓ 50% Deductible', note: 'CRA Line 8523 — meals while travelling for business. 50% rule applies to all food expenses for self-employed contractors.', deductible: true, rate: 0.5 },
-  eating_out:   { label: '✓ 50% Deductible', note: 'CRA Line 8523 — 50% limit applies to meals & beverages for self-employed persons travelling for business (T2125).', deductible: true, rate: 0.5 },
+  groceries:    { label: '✗ Not Deductible', note: 'Personal living cost. Groceries you buy to cook for yourself are not a business meal expense — CRA treats this as ordinary personal food. Not claimed.', deductible: false, rate: 0 },
+  business_meal:{ label: '✓ 50% Deductible', note: 'CRA Line 8523 — meal with a genuine business purpose (client/prospect meeting or business meal). 50% deductible. Note who you met and what was discussed on the receipt.', deductible: true, rate: 0.5 },
+  eating_out:   { label: '✗ Not Deductible', note: 'Personal. Everyday meals near your summer home base (Thornhill) are personal — you would have eaten regardless. Only true business meals (use the Business Meal category) are deductible.', deductible: false, rate: 0 },
   housing:      { label: '✓ 100% Deductible', note: 'CRA Line 9200 — temporary accommodation while travelling away from home for business. Fully deductible travel expense.', deductible: true, rate: 1.0 },
-  gas:          { label: '✓ 100% Deductible', note: 'CRA Line 9281 — motor vehicle fuel expense for business travel including reimbursements to other drivers.', deductible: true, rate: 1.0 },
+  gas:          { label: '✗ Not Deductible', note: 'Not claimed. Vehicle fuel is only deductible at your business-use % backed by a mileage log; without one this is left off the return by choice.', deductible: false, rate: 0 },
   phone:        { label: '✓ ~80% Deductible', note: 'CRA — business-use portion of cell phone. Estimated 80% during work season. Keep monthly bills.', deductible: true, rate: 0.8 },
   supplies:     { label: '✓ 100% Deductible', note: 'CRA Line 8811 — supplies used to earn business income (sunscreen, bags, work gear, etc.).', deductible: true, rate: 1.0 },
   laundry:      { label: '✓ 100% Deductible', note: 'CRA Line 9200 — laundry costs incurred while travelling away from home for business.', deductible: true, rate: 1.0 },
@@ -1505,6 +1517,65 @@ const TAX_TREATMENT = {
   personal:     { label: '✗ Not Deductible', note: 'Personal expense — not claimable on T2125.', deductible: false, rate: 0 },
   other:        { label: '? Ask Your Accountant', note: 'Keep the receipt — let your accountant determine deductibility on T2125.', deductible: false, rate: 0 },
 };
+
+// Single source of truth for deductible rates, derived from TAX_TREATMENT above.
+// Everything (dashboard, expense summary, CSV, accountant report) reads from here
+// so the numbers can never drift between views.
+const TAX_RATE = Object.fromEntries(
+  Object.entries(TAX_TREATMENT).map(([k, v]) => [k, v.rate])
+);
+
+// Find a likely-duplicate of a pending entry in an existing list.
+// type 'expense' matches on same date + same amount (merchant if both have one).
+// type 'income'  matches on same credit_date + same amount (+ pay run if present).
+// Amounts compared to the cent; excludeId lets edits skip the row being edited.
+function findDuplicate(type, pending, excludeId) {
+  const cents = v => Math.round((parseFloat(v) || 0) * 100);
+  const amt = cents(pending.amount);
+  if (type === 'expense') {
+    return expenseData.find(e => {
+      if (excludeId && e.id === excludeId) return false;
+      if (e.expense_date !== pending.expense_date) return false;
+      if (cents(e.amount) !== amt) return false;
+      const m1 = (e.merchant || '').trim().toLowerCase();
+      const m2 = (pending.merchant || '').trim().toLowerCase();
+      // If both have a merchant, require it to match; otherwise date+amount is enough.
+      if (m1 && m2) return m1 === m2;
+      return true;
+    }) || null;
+  }
+  return incomeData.find(i => {
+    if (excludeId && i.id === excludeId) return false;
+    if (i.credit_date !== pending.credit_date) return false;
+    if (cents(i.amount) !== amt) return false;
+    const p1 = (i.pay_run_number || '').trim().toLowerCase();
+    const p2 = (pending.pay_run_number || '').trim().toLowerCase();
+    if (p1 && p2) return p1 === p2;
+    return true;
+  }) || null;
+}
+
+// Live deductibility check — derived from the CURRENT category rules, not the
+// stored is_business flag. This means changing a category's rule (e.g. groceries
+// or gas → non-deductible) instantly applies to every past entry with no re-saving.
+function isDeductible(e) {
+  if (!e) return false;
+  const tx = TAX_TREATMENT[e.category];
+  return tx ? tx.deductible : false;
+}
+
+// Deductible dollar amount for one expense = amount × category rate.
+// A $200 restaurant meal (50%) returns $100; non-deductible categories return 0.
+function deductibleAmount(e) {
+  if (!e || !isDeductible(e)) return 0;
+  const rate = TAX_RATE[e.category] != null ? TAX_RATE[e.category] : 1.0;
+  return (parseFloat(e.amount) || 0) * rate;
+}
+
+// Sum of deductible dollars across a list of expenses.
+function totalDeductible(list) {
+  return list.reduce((s, e) => s + deductibleAmount(e), 0);
+}
 
 function selectCat(cat, el) {
   selectedCategory = cat;
@@ -1574,7 +1645,7 @@ async function handleReceiptUpload(event) {
         body: JSON.stringify({
           model: 'claude-sonnet-4-5',
           max_tokens: 1000,
-          system: `Extract receipt info. Return ONLY valid JSON: {"merchant":"store name","amount":total_number,"date":"YYYY-MM-DD or null","category":"groceries|eating_out|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other"}. Use groceries for supermarkets/grocery stores, eating_out for restaurants/fast food, supplies for work gear/equipment.`,
+          system: `Extract receipt info. Return ONLY valid JSON: {"merchant":"store name","amount":total_number,"date":"YYYY-MM-DD or null","category":"business_meal|eating_out|groceries|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other"}. Use groceries for supermarkets/grocery stores, eating_out for ordinary solo restaurant/fast-food meals, business_meal ONLY when the receipt clearly indicates a client/prospect or business meeting, supplies for work gear/equipment.`,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: receiptB64 }},
             { type: 'text', text: 'Extract receipt details.' }
@@ -1591,7 +1662,7 @@ async function handleReceiptUpload(event) {
       if (!jsonMatch) throw new Error('No JSON in response: ' + raw.slice(0,100));
       const parsed = JSON.parse(jsonMatch[0]);
       if (parsed.merchant) document.getElementById('exp-merchant').value = parsed.merchant;
-      if (parsed.amount) document.getElementById('exp-amount').value = parsed.amount;
+      if (parsed.amount != null) document.getElementById('exp-amount').value = parseAmount(parsed.amount);
       if (parsed.date) document.getElementById('exp-date').value = parsed.date;
       if (parsed.category) {
         const chip = document.querySelector(`.cat-chip[onclick*="'${parsed.category}'"]`);
@@ -1614,6 +1685,16 @@ async function saveExpense() {
   const date = document.getElementById('exp-date').value;
   if (!amount || !date) return showToast('Amount and date required', 'error');
   if (!selectedCategory) return showToast('Select a category', 'error');
+
+  // Duplicate guard — warn if an expense with the same date + amount (+ merchant) exists.
+  const dupMerchant = document.getElementById('exp-merchant').value || null;
+  const dup = findDuplicate('expense', { amount, expense_date: date, merchant: dupMerchant });
+  if (dup) {
+    const when = fmtDate(dup.expense_date);
+    if (!confirm(`Possible duplicate:\n\n${dup.merchant || dup.category} · ${fmt(dup.amount)} · ${when}\n\nYou already logged an expense with this date and amount. Save anyway?`)) {
+      return;
+    }
+  }
 
   isSaving = true;
   const saveBtn = document.getElementById('save-expense-btn');
@@ -1660,21 +1741,21 @@ function showDetail(type, id) {
     rows = [
       ['Amount', `<span style="color:var(--green);font-weight:700">${fmt(item.amount)}</span>`],
       ['Date', fmtDate(item.credit_date)],
-      ['Pay Run', item.pay_run_number||'—'],
+      ['Pay Run', escHtml(item.pay_run_number||'—')],
       ['Type', `<span class="tag tag-${item.payment_type}">${item.payment_type}</span>`],
-      ['Ref #', item.ref_number||'—'],
+      ['Ref #', escHtml(item.ref_number||'—')],
       ['Sender', 'Vantage'],
-      ...(item.notes ? [['Notes', item.notes]] : [])
+      ...(item.notes ? [['Notes', escHtml(item.notes)]] : [])
     ].map(([k,v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
   } else {
-    const catEmoji = {groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
+    const catEmoji = {business_meal:'🤝',groceries:'🛒',eating_out:'🍔',housing:'🏠',gas:'⛽',phone:'📱',supplies:'🎒',laundry:'👕',transport:'🚗',parking:'🅿️',entertainment:'🎬',personal:'🛍️',other:'📦',food:'🍔',gear:'🎒'};
     rows = [
       ['Amount', `<span style="color:var(--red);font-weight:700">−${fmt(item.amount)}</span>`],
       ['Date', fmtDate(item.expense_date)],
-      ['Merchant', item.merchant||'—'],
+      ['Merchant', escHtml(item.merchant||'—')],
       ['Category', `${catEmoji[item.category]||''} ${item.category}`],
-      ['Business', item.is_business ? '✓ Deductible' : 'Personal'],
-      ...(item.notes ? [['Notes', item.notes]] : [])
+      ['Business', isDeductible(item) ? '✓ Deductible' : 'Personal'],
+      ...(item.notes ? [['Notes', escHtml(item.notes)]] : [])
     ].map(([k,v]) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`).join('');
     if (item.receipt_url) rows += `<img src="${item.receipt_url}" style="width:100%;border-radius:8px;margin-top:12px" />`;
   }
@@ -1701,16 +1782,18 @@ function enterEditMode(type, id) {
     editEl.innerHTML = `
       <div class="form-group"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-input" id="edit-amount" value="${item.amount}"></div>
       <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="edit-date" value="${item.credit_date}"></div>
-      <div class="form-group"><label class="form-label">Pay Run #</label><input type="text" class="form-input" id="edit-payrun" value="${item.pay_run_number||''}"></div>
-      <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-input" id="edit-notes" value="${item.notes||''}"></div>`;
+      <div class="form-group"><label class="form-label">Pay Run #</label><input type="text" class="form-input" id="edit-payrun" value="${escAttr(item.pay_run_number)}"></div>
+      <div class="form-group"><label class="form-label">Type</label><select class="form-input" id="edit-type">${['advance','backend','remaining_backend'].map(t => `<option value="${t}" ${t===item.payment_type?'selected':''}>${t.replace('_',' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label class="form-label">Ref #</label><input type="text" class="form-input" id="edit-ref" value="${escAttr(item.ref_number)}"></div>
+      <div class="form-group"><label class="form-label">Notes</label><input type="text" class="form-input" id="edit-notes" value="${escAttr(item.notes)}"></div>`;
   } else {
-    const cats = ['groceries','eating_out','housing','gas','phone','supplies','laundry','transport','parking','entertainment','personal','other'];
+    const cats = ['business_meal','eating_out','groceries','housing','gas','phone','supplies','laundry','transport','parking','entertainment','personal','other'];
     editEl.innerHTML = `
       <div class="form-group"><label class="form-label">Amount</label><input type="number" step="0.01" class="form-input" id="edit-amount" value="${item.amount}"></div>
       <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="edit-date" value="${item.expense_date}"></div>
-      <div class="form-group"><label class="form-label">Merchant</label><input type="text" class="form-input" id="edit-merchant" value="${item.merchant||''}"></div>
+      <div class="form-group"><label class="form-label">Merchant</label><input type="text" class="form-input" id="edit-merchant" value="${escAttr(item.merchant)}"></div>
       <div class="form-group"><label class="form-label">Category</label><select class="form-input" id="edit-category">${cats.map(c => `<option value="${c}" ${c===item.category?'selected':''}>${c.replace('_',' ')}</option>`).join('')}</select></div>
-      <div class="form-group"><label class="form-label">Notes / Description</label><textarea class="form-input" id="edit-notes" style="min-height:60px">${item.notes||''}</textarea></div>`;
+      <div class="form-group"><label class="form-label">Notes / Description</label><textarea class="form-input" id="edit-notes" style="min-height:60px">${escHtml(item.notes)}</textarea></div>`;
   }
 
   document.getElementById('detail-content').style.display = 'none';
@@ -1734,6 +1817,8 @@ async function saveEdit(type, id) {
         amount: parseFloat(document.getElementById('edit-amount').value),
         credit_date: document.getElementById('edit-date').value,
         pay_run_number: document.getElementById('edit-payrun').value || null,
+        payment_type: document.getElementById('edit-type').value,
+        ref_number: document.getElementById('edit-ref').value || null,
         notes: document.getElementById('edit-notes').value || null,
       };
     } else {
@@ -1774,7 +1859,7 @@ async function deleteEntry(type, id) {
 function updateExportView() {
   const gross = incomeData.reduce((s,i) => s + parseFloat(i.amount), 0);
   const expenses = expenseData.reduce((s,e) => s + parseFloat(e.amount), 0);
-  const deductible = expenseData.filter(e => e.is_business).reduce((s,e) => s + parseFloat(e.amount), 0);
+  const deductible = totalDeductible(expenseData.filter(isDeductible));
   document.getElementById('exp-gross').textContent = fmt(gross);
   document.getElementById('exp-expenses').textContent = fmt(expenses);
   document.getElementById('exp-deductible').textContent = fmt(deductible);
@@ -1785,28 +1870,27 @@ function exportCSV(type) {
   let csv = '', filename = '';
   if (type === 'income') {
     csv = 'Pay Run,Date,Amount (CAD),Type,Ref #,Notes\n';
-    incomeData.forEach(i => { csv += `${i.pay_run_number||''},${i.credit_date},${i.amount},${i.payment_type},${i.ref_number||''},${i.notes||''}\n`; });
+    incomeData.forEach(i => { csv += `"${csvCell(i.pay_run_number)}",${i.credit_date},${i.amount},${i.payment_type},"${csvCell(i.ref_number)}","${csvCell(i.notes)}"\n`; });
     filename = 'vantage-income-2026.csv';
   } else if (type === 'expenses') {
     csv = 'Date,Merchant,Amount (CAD),Category,Business,Notes\n';
-    expenseData.forEach(e => { csv += `${e.expense_date},${e.merchant||''},${e.amount},${e.category},${e.is_business?'Yes':'No'},${e.notes||''}\n`; });
+    expenseData.forEach(e => { csv += `${e.expense_date},"${csvCell(e.merchant)}",${e.amount},${e.category},${isDeductible(e)?'Yes':'No'},"${csvCell(e.notes)}"\n`; });
     filename = 'expenses-2026.csv';
   } else {
     const gross = incomeData.reduce((s,i) => s+parseFloat(i.amount),0);
     const expenses = expenseData.reduce((s,e) => s+parseFloat(e.amount),0);
     csv = `Finance Tracker Pro — 2026 Season Report\nGross Income,${fmt(gross)}\nTotal Expenses,${fmt(expenses)}\nNet Income,${fmt(gross-expenses)}\n\nINCOME\nPay Run,Date,Amount,Type\n`;
-    incomeData.forEach(i => { csv += `${i.pay_run_number||''},${i.credit_date},${i.amount},${i.payment_type}\n`; });
+    incomeData.forEach(i => { csv += `"${csvCell(i.pay_run_number)}",${i.credit_date},${i.amount},${i.payment_type}\n`; });
     csv += '\nEXPENSES\nDate,Merchant,Amount,Category,Business\n';
-    expenseData.forEach(e => { csv += `${e.expense_date},${e.merchant||''},${e.amount},${e.category},${e.is_business?'Yes':'No'}\n`; });
+    expenseData.forEach(e => { csv += `${e.expense_date},"${csvCell(e.merchant)}",${e.amount},${e.category},${isDeductible(e)?'Yes':'No'}\n`; });
     filename = 'finance-report-2026.csv';
   }
   if (type === 'accountant') {
-    const TAX_RATES = { groceries:0.5, eating_out:0.5, housing:1.0, gas:1.0, phone:0.8, supplies:1.0, laundry:1.0, transport:1.0, parking:1.0 };
     csv = 'Date,Merchant,Category,Tax Treatment,Amount (CAD),Deductible Amount,Notes,Receipt URL\n';
-    expenseData.filter(e => e.is_business).sort((a,b) => a.expense_date.localeCompare(b.expense_date)).forEach(e => {
-      const rate = TAX_RATES[e.category] || 1.0;
+    expenseData.filter(isDeductible).sort((a,b) => a.expense_date.localeCompare(b.expense_date)).forEach(e => {
+      const rate = TAX_RATE[e.category] != null ? TAX_RATE[e.category] : 1.0;
       const deductible = parseFloat(e.amount) * rate;
-      csv += `${e.expense_date},"${e.merchant||''}","${e.category}","${Math.round(rate*100)}% deductible",${e.amount},${deductible.toFixed(2)},"${e.notes||''}","${e.receipt_url||''}"
+      csv += `${e.expense_date},"${csvCell(e.merchant)}","${e.category}","${Math.round(rate*100)}% deductible",${e.amount},${deductible.toFixed(2)},"${csvCell(e.notes)}","${e.receipt_url||''}"
 `;
     });
     filename = 'vantage-2026-deductibles.csv';
@@ -1819,10 +1903,8 @@ function exportCSV(type) {
 
 function exportAccountantReport() {
   const TAX_TREATMENT_LOCAL = {
-    groceries:    { label: 'Groceries — Meals While Travelling', rate: 0.5, rateLabel: '50%', cra: 'CRA Line 8523 (T2125): 50% limit applies to all food & beverage expenses for self-employed contractors travelling for business.' },
-    eating_out:   { label: 'Meals — Restaurant/Fast Food', rate: 0.5, rateLabel: '50%', cra: 'CRA Line 8523 (T2125): 50% deductible meal expense for self-employed persons travelling for business.' },
+    business_meal:{ label: 'Business Meal — Client/Prospect Meeting', rate: 0.5, rateLabel: '50%', cra: 'CRA Line 8523 (T2125): 50% deductible meal with a genuine business purpose. Receipt should note who was met and what was discussed.' },
     housing:      { label: 'Temporary Accommodation (Toronto)', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Travel expense — temporary lodging away from principal residence (Edmonton AB) for business.' },
-    gas:          { label: 'Vehicle Fuel / Gas Reimbursements', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9281 (T2125): Motor vehicle fuel and travel reimbursements for business purposes.' },
     phone:        { label: 'Cell Phone — Business Use Portion (~80%)', rate: 0.8, rateLabel: '~80%', cra: 'CRA: Business-use portion of personal cell phone. Estimated 80% during May-Aug work season. Keep monthly bills.' },
     supplies:     { label: 'Work Supplies & Field Equipment', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 8811 (T2125): Supplies used to earn business income (sunscreen, work bags, gear, etc.).' },
     laundry:      { label: 'Laundry & Clothing Maintenance', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Laundry costs incurred while travelling away from home base for business.' },
@@ -1830,7 +1912,7 @@ function exportAccountantReport() {
     parking:      { label: 'Parking', rate: 1.0, rateLabel: '100%', cra: 'CRA Line 9200 (T2125): Parking fees for business travel.' },
   };
 
-  const bizExpenses = expenseData.filter(e => e.is_business);
+  const bizExpenses = expenseData.filter(isDeductible);
   const totalSpent = bizExpenses.reduce((s,e) => s + parseFloat(e.amount), 0);
 
   // Category totals
@@ -1838,8 +1920,9 @@ function exportAccountantReport() {
   bizExpenses.forEach(e => {
     if (!byCategory[e.category]) byCategory[e.category] = { total: 0, count: 0, deductible: 0 };
     const tx = TAX_TREATMENT_LOCAL[e.category] || { rate: 1.0, rateLabel: '100%' };
+    const rate = TAX_RATE[e.category] != null ? TAX_RATE[e.category] : tx.rate;
     byCategory[e.category].total += parseFloat(e.amount);
-    byCategory[e.category].deductible += parseFloat(e.amount) * tx.rate;
+    byCategory[e.category].deductible += parseFloat(e.amount) * rate;
     byCategory[e.category].count++;
   });
 
@@ -1918,12 +2001,12 @@ function exportAccountantReport() {
 </div>
 
 <div class="note">
-  <strong>Note to Accountant:</strong> This contractor is an independent contractor (not employee) for Vantage Pest Control. They reside in Edmonton, AB and relocated to Toronto, ON for the full 2026 summer season. All meal, accommodation, and transportation expenses listed were incurred in Toronto while away from their principal residence. Meal deductions at 50% per CRA s.67.1 (eating out) or 100% for groceries/living expenses as reasonable away-from-home costs. Gas reimbursements to other drivers are claimed as motor vehicle/transport expenses. Phone deduction reflects estimated 80% business use during the work season.
+  <strong>Note to Accountant:</strong> This contractor is an independent contractor (not employee) for Vantage Pest Control. They reside in Edmonton, AB and relocated to Toronto, ON for the full 2026 summer season. All meal, accommodation, and transportation expenses listed were incurred in Toronto while away from their principal residence. Meal and food deductions (both restaurants and groceries) are claimed at 50% per CRA s.67.1 / Line 8523. Accommodation, transport, and supplies are claimed at 100% as reasonable away-from-home business costs. Gas reimbursements to other drivers are claimed as motor vehicle/transport expenses. Phone deduction reflects estimated 80% business use during the work season.
 </div>
 
 ${missingReceipts.length > 0 ? `<div class="warning">
   ⚠️ <strong>${missingReceipts.length} expense${missingReceipts.length > 1 ? 's' : ''} without receipt documentation:</strong>
-  ${missingReceipts.map(e => `${e.expense_date} · ${e.merchant || e.category} · $${parseFloat(e.amount).toFixed(2)}`).join(' | ')}
+  ${missingReceipts.map(e => `${e.expense_date} · ${escHtml(e.merchant || e.category)} · $${parseFloat(e.amount).toFixed(2)}`).join(' | ')}
   <br><span style="font-size:12px">These are included in totals but may require additional documentation.</span>
 </div>` : '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:10px 14px;font-size:13px;color:#15803d;margin-bottom:20px">✓ All expenses have receipt documentation attached.</div>'}
 
@@ -1977,11 +2060,12 @@ ${missingReceipts.length > 0 ? `<div class="warning">
   <tbody>
     ${bizExpenses.sort((a,b) => a.expense_date.localeCompare(b.expense_date)).map(e => {
       const tx = TAX_TREATMENT_LOCAL[e.category] || { rate: 1.0 };
-      const deductAmt = parseFloat(e.amount) * tx.rate;
+      const rate = TAX_RATE[e.category] != null ? TAX_RATE[e.category] : tx.rate;
+      const deductAmt = parseFloat(e.amount) * rate;
       const hasReceipt = !!e.receipt_url;
       return `<tr style="${!hasReceipt ? 'background:#fff7ed' : ''}">
         <td class="mono" style="white-space:nowrap;font-size:12px">${e.expense_date}</td>
-        <td><strong>${e.merchant || '—'}</strong></td>
+        <td><strong>${escHtml(e.merchant || '—')}</strong></td>
         <td style="font-size:12px;text-transform:capitalize">${(e.category||'').replace('_',' ')}</td>
         <td class="notes-cell">${e.notes || '<span style="color:#d1d5db">No description</span>'}</td>
         <td class="amount">$${parseFloat(e.amount).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
@@ -2012,7 +2096,32 @@ ${missingReceipts.length > 0 ? `<div class="warning">
   showToast('Accountant report downloaded', 'success');
 }
 
+// Escape for use inside HTML element text content.
+function escHtml(v) {
+  return (v == null ? '' : String(v))
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+// Escape for use inside a double-quoted HTML attribute (e.g. input value="...").
+function escAttr(v) {
+  return escHtml(v).replace(/"/g,'&quot;');
+}
+// Coerce an AI-returned amount into a clean numeric string for an input field.
+// Handles numbers, "$12.50", "1,234.56", "CAD 12", etc. Returns '' if not parseable.
+function parseAmount(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'number') return isFinite(v) ? String(v) : '';
+  const cleaned = String(v).replace(/[^0-9.\-]/g, '');
+  const n = parseFloat(cleaned);
+  return isFinite(n) ? String(n) : '';
+}
 function fmt(n) { return '$' + parseFloat(n||0).toLocaleString('en-CA', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+// Sanitize a value for a CSV cell: strip newlines, escape quotes, and neutralize
+// spreadsheet formula injection (leading = + - @) so merchant/notes can't break the file.
+function csvCell(v) {
+  let s = (v == null ? '' : String(v)).replace(/[\r\n]+/g, ' ').replace(/"/g, '""');
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s;
+}
 function fmtDate(d) { return new Date(d+'T12:00:00').toLocaleDateString('en-CA', { month:'short', day:'numeric', year:'numeric' }); }
 function today() { return new Date().toISOString().split('T')[0]; }
 function closeSheets() { document.querySelectorAll('.sheet-overlay').forEach(s => s.classList.remove('open')); }
@@ -2284,14 +2393,14 @@ async function analyzeDescription() {
 
 Analyze the expense and return ONLY valid JSON:
 {
-  "category": "groceries|eating_out|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other",
+  "category": "business_meal|eating_out|groceries|housing|gas|phone|supplies|laundry|transport|parking|entertainment|personal|other",
   "is_business": true|false,
   "deductible_rate": 0.0-1.0,
   "reasoning": "one clear sentence explaining why and the CRA basis",
   "cra_note": "optional extra note for accountant if complex",
   "confidence": "high|medium|low"
 }
-CRA 2026 deductible rates (T2125): groceries=0.5 (CRA Line 8523 — 50% rule applies to ALL food for self-employed), eating_out=0.5 (same 50% rule), housing=1.0 (Line 9200 travel), gas=1.0 (Line 9281), phone=0.8 (business portion), supplies=1.0 (Line 8811), laundry=1.0 (Line 9200), transport=1.0 (Line 9200), parking=1.0 (Line 9200), entertainment=0.0, personal=0.0.
+CRA 2026 deductible rates (T2125) as configured for THIS contractor: business_meal=0.5 (CRA Line 8523 — only meals with a genuine business purpose, e.g. client/prospect meeting), eating_out=0.0 (everyday solo meals near the summer home base are PERSONAL — not deductible), groceries=0.0 (personal living cost — not deductible), housing=1.0 (Line 9200 travel), gas=0.0 (NOT claimed — no mileage log kept this year), phone=0.8 (business portion), supplies=1.0 (Line 8811), laundry=1.0 (Line 9200), transport=1.0 (Line 9200, transit/rideshare/e-transfers to drivers), parking=1.0 (Line 9200), entertainment=0.0, personal=0.0. Only classify a meal as business_meal when there is a clear business meeting purpose; default ordinary meals to eating_out (personal).
 E-transfers to friends for gas/rides = transport, 100% deductible.
 Groceries at any store (Walmart, No Frills, etc) = groceries category.
 Be generous but accurate — this person legitimately incurs these costs for work.
@@ -2348,15 +2457,20 @@ Return only JSON, no markdown.`,
 // ==================== PAY RUN PREDICTOR ====================
 
 function getNextPayDates() {
-  // Pay runs hit on 10th and 25th of each month
+  // Pay runs hit on the 10th and 25th of each month.
+  // Look ahead 8 months so we always have at least 6 upcoming dates,
+  // even near year boundaries, then take the soonest 6.
   const dates = [];
   const today = new Date(); today.setHours(0,0,0,0);
-  // Generate next 6 pay dates
-  for (let m = 0; m < 4; m++) {
-    const d = new Date(today);
-    d.setMonth(d.getMonth() + m);
+  for (let m = 0; m < 8; m++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + m, 1);
     [10, 25].forEach(day => {
-      const pd = new Date(d.getFullYear(), d.getMonth(), day);
+      let pd = new Date(d.getFullYear(), d.getMonth(), day);
+      // If a pay date falls on a weekend, banks/payroll typically settle the
+      // prior business day — pull Sat back to Fri, Sun back to Fri.
+      const dow = pd.getDay();
+      if (dow === 6) pd.setDate(pd.getDate() - 1);       // Saturday -> Friday
+      else if (dow === 0) pd.setDate(pd.getDate() - 2);  // Sunday   -> Friday
       if (pd >= today) dates.push(pd);
     });
   }
