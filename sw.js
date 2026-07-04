@@ -1,8 +1,8 @@
-const CACHE = 'finance-tracker-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+const CACHE = 'finance-tracker-v2';
+const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));
   self.skipWaiting();
 });
 
