@@ -1204,7 +1204,18 @@
 const SUPABASE_URL = 'https://axjzcfdcumhgskjqnzyy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF4anpjZmRjdW1oZ3NranFuenl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5MTgwNTcsImV4cCI6MjA5NjQ5NDA1N30.iME2f-8aLF5Z3-4Xdc0A7OlBo5HZgwvgV8tcQGpsPl8';
 function getAnthropicKey() {
-  return localStorage.getItem('ftp_anthropic_key') || '';
+  // Finance-specific key name (both apps share moomof.github.io localStorage,
+  // so a generic name could be overwritten by Field Tracker Pro)
+  let key = localStorage.getItem('financetracker_anthropic_key');
+  if (!key) {
+    // migrate from old shared name if present
+    const legacy = localStorage.getItem('ftp_anthropic_key');
+    if (legacy) {
+      localStorage.setItem('financetracker_anthropic_key', legacy);
+      key = legacy;
+    }
+  }
+  return key || '';
 }
 function getAIHeaders() {
   return {
@@ -1609,28 +1620,44 @@ async function handleReceiptUpload(event) {
     const dataUrl = e.target.result;
 
     // Compress image before sending to AI (iPhone photos are huge)
-    const compressedDataUrl = await new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX = 1200;
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', 0.85));
-      };
-      img.src = dataUrl;
-    });
+    let compressedDataUrl;
+    try {
+      compressedDataUrl = await new Promise((resolve, reject) => {
+        const img = new Image();
+        const timer = setTimeout(() => reject(new Error('Image took too long to load')), 15000);
+        img.onload = () => {
+          clearTimeout(timer);
+          try {
+            const canvas = document.createElement('canvas');
+            const MAX = 1200;
+            let w = img.width, h = img.height;
+            if (w > MAX || h > MAX) {
+              if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+              else { w = Math.round(w * MAX / h); h = MAX; }
+            }
+            canvas.width = w; canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          } catch(e) { reject(e); }
+        };
+        img.onerror = () => { clearTimeout(timer); reject(new Error('Could not decode image — try a different photo or screenshot it first')); };
+        img.src = dataUrl;
+      });
+    } catch(imgErr) {
+      const status = document.getElementById('expense-ai-status');
+      status.className = '';
+      status.innerHTML = `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:7px;padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--red)">✕ ${imgErr.message}</div>`;
+      return;
+    }
 
     receiptB64 = compressedDataUrl.split(',')[1];
     document.getElementById('receipt-preview').src = dataUrl;
     document.getElementById('receipt-preview').classList.remove('hidden');
 
     if (!getAnthropicKey()) {
+      const status = document.getElementById('expense-ai-status');
+      status.className = '';
+      status.innerHTML = `<div style="background:var(--red-dim);border:1px solid var(--red);border-radius:7px;padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--red)">✕ No API key on this device — go to Settings and save your key, then re-upload the photo</div>`;
       showToast('Add your API key in Settings first', 'error');
       return;
     }
@@ -1676,6 +1703,7 @@ async function handleReceiptUpload(event) {
       console.error('Receipt error:', err);
     }
   };
+  reader.onerror = () => showToast('Could not read file', 'error');
   reader.readAsDataURL(file);
 }
 
@@ -2148,7 +2176,7 @@ function loadSettingsView() {
   const keyEl = document.getElementById('settings-api-key');
   const statusEl = document.getElementById('api-key-status');
   if (!keyEl) return;
-  const stored = localStorage.getItem('ftp_anthropic_key');
+  const stored = getAnthropicKey();
   if (stored) {
     keyEl.value = stored;
     statusEl.textContent = '✓ Key saved on this device';
@@ -2167,14 +2195,14 @@ function saveApiKey() {
     statusEl.style.color = 'var(--red)';
     return;
   }
-  localStorage.setItem('ftp_anthropic_key', key);
+  localStorage.setItem('financetracker_anthropic_key', key);
   statusEl.textContent = '✓ Key saved on this device only';
   statusEl.style.color = 'var(--green)';
   showToast('API key saved', 'success');
 }
 
 async function testApiKey() {
-  const key = localStorage.getItem('ftp_anthropic_key');
+  const key = getAnthropicKey();
   const statusEl = document.getElementById('api-key-status');
   if (!key) {
     statusEl.textContent = 'No key saved — enter and save a key first';
@@ -2453,193 +2481,6 @@ Return only JSON, no markdown.`,
 }
 
 // ==================== END DESCRIPTION ANALYZER ====================
-
-// ==================== PAY RUN PREDICTOR ====================
-
-function getNextPayDates() {
-  // Pay runs hit on the 10th and 25th of each month.
-  // Look ahead 8 months so we always have at least 6 upcoming dates,
-  // even near year boundaries, then take the soonest 6.
-  const dates = [];
-  const today = new Date(); today.setHours(0,0,0,0);
-  for (let m = 0; m < 8; m++) {
-    const d = new Date(today.getFullYear(), today.getMonth() + m, 1);
-    [10, 25].forEach(day => {
-      let pd = new Date(d.getFullYear(), d.getMonth(), day);
-      // If a pay date falls on a weekend, banks/payroll typically settle the
-      // prior business day — pull Sat back to Fri, Sun back to Fri.
-      const dow = pd.getDay();
-      if (dow === 6) pd.setDate(pd.getDate() - 1);       // Saturday -> Friday
-      else if (dow === 0) pd.setDate(pd.getDate() - 2);  // Sunday   -> Friday
-      if (pd >= today) dates.push(pd);
-    });
-  }
-  return dates.sort((a,b) => a-b).slice(0, 6);
-}
-
-function daysUntil(date) {
-  const today = new Date(); today.setHours(0,0,0,0);
-  return Math.round((date - today) / 86400000);
-}
-
-function fmtPayDate(date) {
-  return date.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
-}
-
-async function updatePayRunPredictor() {
-  // Fetch pending accounts from Field Tracker
-  try {
-    const res = await fetch(
-      `${FT_SUPABASE_URL}/rest/v1/pulse_snapshots?order=date.desc&limit=1`,
-      { headers: { 'apikey': FT_SUPABASE_KEY, 'Authorization': `Bearer ${FT_SUPABASE_KEY}` } }
-    );
-    const pulses = await res.json();
-    const pulse = pulses[0];
-
-    const pending = pulse ? parseInt(pulse.pending || 0) : 0;
-    const pendingRev = pulse ? parseFloat(pulse.pending_revenue || 0) : 0;
-
-    // Estimate pest/mosquito ratio from logged data
-    const pestRatio = 0.85; // default assumption
-    const pendingPest = Math.round(pending * pestRatio);
-    const pendingMosq = pending - pendingPest;
-    const estNextRun = (pendingPest * 75) + (pendingMosq * 50);
-
-    document.getElementById('pr-pending').textContent = pending;
-    document.getElementById('pr-amount').textContent = fmt(estNextRun);
-    document.getElementById('pr-breakdown').textContent = `~${pendingPest} pest × $75 + ${pendingMosq} mosq × $50`;
-
-    const payDates = getNextPayDates();
-    const nextDate = payDates[0];
-    const daysAway = daysUntil(nextDate);
-
-    document.getElementById('pr-date').textContent = fmtPayDate(nextDate);
-    document.getElementById('pr-days-until').textContent = daysAway === 0 ? 'Today!' : daysAway === 1 ? 'Tomorrow' : `${daysAway} days away`;
-
-    // Schedule
-    const schedEl = document.getElementById('pr-schedule');
-    schedEl.innerHTML = payDates.map((d, i) => {
-      const days = daysUntil(d);
-      const isNext = i === 0;
-      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);${i === payDates.length-1 ? 'border-bottom:none' : ''}">
-        <span style="font-size:13px;font-weight:${isNext ? '600' : '400'};color:${isNext ? 'var(--text)' : 'var(--text2)'}">
-          ${isNext ? '→ ' : ''}${fmtPayDate(d)}
-        </span>
-        <span style="font-family:var(--mono);font-size:12px;color:${isNext ? 'var(--green)' : 'var(--text3)'}">
-          ${days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : `${days} days`}
-        </span>
-      </div>`;
-    }).join('');
-
-  } catch(e) {
-    document.getElementById('pr-pending').textContent = '—';
-    document.getElementById('pr-amount').textContent = '—';
-    document.getElementById('pr-date').textContent = '—';
-    // Still show pay schedule even if FT fetch fails
-    const payDates = getNextPayDates();
-    const schedEl = document.getElementById('pr-schedule');
-    if (schedEl) {
-      schedEl.innerHTML = payDates.map((d, i) => {
-        const days = daysUntil(d);
-        return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);${i === payDates.length-1 ? 'border-bottom:none':''}">
-          <span style="font-size:13px;color:var(--text2)">${fmtPayDate(d)}</span>
-          <span style="font-family:var(--mono);font-size:12px;color:var(--text3)">${days === 0 ? 'Today' : `${days} days`}</span>
-        </div>`;
-      }).join('');
-    }
-  }
-}
-
-// ==================== SEASON EARNINGS TIMELINE ====================
-
-function updateEarningsTimeline() {
-  const el = document.getElementById('earnings-timeline');
-  if (!el) return;
-
-  const seasonStart = new Date('2026-05-04');
-  const seasonEnd = new Date('2026-08-28');
-  const today = new Date(); today.setHours(0,0,0,0);
-
-  // All income entries sorted by date
-  const sorted = [...incomeData].sort((a,b) => a.credit_date.localeCompare(b.credit_date));
-  const totalReceived = sorted.reduce((s,i) => s + parseFloat(i.amount), 0);
-
-  // Key dates on the timeline
-  const events = [
-    { date: '2026-05-04', label: 'Season Start', type: 'milestone' },
-    ...sorted.map(i => ({
-      date: i.credit_date,
-      label: i.pay_run_number || 'Payment',
-      amount: parseFloat(i.amount),
-      type: i.payment_type
-    })),
-    { date: '2026-08-28', label: 'Season End', type: 'milestone' },
-    { date: '2026-10-25', label: 'Backend (75%)', type: 'projected' },
-    { date: '2027-03-25', label: 'Backend (25%)', type: 'projected' },
-  ];
-
-  // Running total line
-  let running = 0;
-  const runningTotals = sorted.map(i => {
-    running += parseFloat(i.amount);
-    return { date: i.credit_date, total: running };
-  });
-
-  if (sorted.length === 0) {
-    el.innerHTML = `<div style="text-align:center;padding:24px;color:var(--text3);font-family:var(--mono);font-size:12px">No payments logged yet<br><span style="font-size:10px;opacity:0.6">Add income entries to see your timeline</span></div>`;
-    return;
-  }
-
-  // Simple visual timeline
-  el.innerHTML = `
-    <div style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Season Total Received</span>
-        <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green)">${fmt(totalReceived)}</span>
-      </div>
-    </div>
-
-    <!-- Payment dots timeline -->
-    <div style="position:relative;padding:8px 0;margin-bottom:16px">
-      <!-- Base line -->
-      <div style="position:absolute;top:50%;left:0;right:0;height:2px;background:var(--border);transform:translateY(-50%)"></div>
-      <!-- Payment markers -->
-      <div style="display:flex;align-items:center;justify-content:space-between;position:relative">
-        ${sorted.map((i, idx) => {
-          const isAdvance = i.payment_type === 'advance';
-          const color = isAdvance ? 'var(--green)' : 'var(--purple)';
-          return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1">
-            <div style="font-family:var(--mono);font-size:9px;color:var(--text3)">${fmtDate(i.credit_date).replace(', 2026','').replace(', 2027','')}</div>
-            <div style="width:10px;height:10px;border-radius:50%;background:${color};border:2px solid var(--bg);box-shadow:0 0 0 2px ${color};z-index:1"></div>
-            <div style="font-family:var(--mono);font-size:9px;color:${color};font-weight:600">${fmt(i.amount).replace('$','$')}</div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <!-- Payment list -->
-    <div style="display:flex;flex-direction:column;gap:0">
-      ${sorted.map((i, idx) => {
-        let runTotal = 0;
-        for (let j = 0; j <= idx; j++) runTotal += parseFloat(sorted[j].amount);
-        const typeColor = i.payment_type === 'advance' ? 'var(--green)' : i.payment_type === 'backend' ? 'var(--purple)' : 'var(--amber)';
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="width:8px;height:8px;border-radius:50%;background:${typeColor};flex-shrink:0"></div>
-            <div>
-              <div style="font-size:13px;font-weight:500">${i.pay_run_number || 'Payment'}</div>
-              <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">${fmtDate(i.credit_date)}</div>
-            </div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-family:var(--mono);font-size:13px;font-weight:600;color:${typeColor}">+${fmt(i.amount)}</div>
-            <div style="font-family:var(--mono);font-size:10px;color:var(--text3)">total: ${fmt(runTotal)}</div>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
-  `;
-}
 
 // ==================== END RECONCILE ====================
 
